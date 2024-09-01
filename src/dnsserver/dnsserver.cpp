@@ -1,24 +1,15 @@
-/**
- * Copyright (c) 2022 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
-
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
 #include <stdbool.h>
-
 #include "dnsserver.h"
 #include "lwip/udp.h"
 
 #define PORT_DNS_SERVER 53
 #define DUMP_DATA 0
-
 #define DEBUG_printf(...)
 #define ERROR_printf printf
-
 typedef struct dns_header_t_
 {
     uint16_t id;
@@ -28,9 +19,7 @@ typedef struct dns_header_t_
     uint16_t authority_record_count;
     uint16_t additional_record_count;
 } dns_header_t;
-
 #define MAX_DNS_MSG_SIZE 300
-
 static int dns_socket_new_dgram(struct udp_pcb **udp, void *cb_data, udp_recv_fn cb_udp_recv)
 {
     *udp = udp_new();
@@ -41,7 +30,6 @@ static int dns_socket_new_dgram(struct udp_pcb **udp, void *cb_data, udp_recv_fn
     udp_recv(*udp, cb_udp_recv, (void *)cb_data);
     return ERR_OK;
 }
-
 static void dns_socket_free(struct udp_pcb **udp)
 {
     if (*udp != NULL)
@@ -50,7 +38,6 @@ static void dns_socket_free(struct udp_pcb **udp)
         *udp = NULL;
     }
 }
-
 static int dns_socket_bind(struct udp_pcb **udp, uint32_t ip, uint16_t port)
 {
     ip_addr_t addr;
@@ -63,7 +50,6 @@ static int dns_socket_bind(struct udp_pcb **udp, uint32_t ip, uint16_t port)
     }
     return err;
 }
-
 #if DUMP_DATA
 static void dump_bytes(const uint8_t *bptr, uint32_t len)
 {
@@ -84,7 +70,6 @@ static void dump_bytes(const uint8_t *bptr, uint32_t len)
     printf("\n");
 }
 #endif
-
 static int dns_socket_sendto(struct udp_pcb **udp, const void *buf, size_t len, const ip_addr_t *dest, uint16_t port)
 {
     if (len > 0xffff)
@@ -240,13 +225,11 @@ static void dns_server_process_wrapper(dns_server_t *arg, struct udp_pcb *upcb, 
     DEBUG_printf("Sending %d byte reply to %s:%d\n", answer_ptr - dns_msg, ipaddr_ntoa(src_addr), src_port);
     dns_socket_sendto(&d->udp, &dns_msg, answer_ptr - dns_msg, src_addr, src_port);
 }
-
 static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port)
 {
     dns_server_process_wrapper((dns_server_t *)arg, upcb, p, src_addr, src_port);
     pbuf_free(p);
 }
-
 void dns_server_init(dns_server_t *d, ip_addr_t *ip)
 {
     if (dns_socket_new_dgram(&d->udp, d, dns_server_process) != ERR_OK)
@@ -262,7 +245,6 @@ void dns_server_init(dns_server_t *d, ip_addr_t *ip)
     ip_addr_copy(d->ip, *ip);
     DEBUG_printf("dns server listening on port %d\n", PORT_DNS_SERVER);
 }
-
 void dns_server_deinit(dns_server_t *d)
 {
     dns_socket_free(&d->udp);
