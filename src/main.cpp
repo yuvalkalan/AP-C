@@ -16,7 +16,6 @@
 #include "dnsserver/dnsserver.h"
 
 #define TCP_PORT 80
-#define DEBUG_printf printf
 #define POLL_TIME_S 5
 #define HTTP_GET "GET"
 #define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
@@ -58,7 +57,7 @@ static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, struct 
         err_t err = tcp_close(client_pcb);
         if (err != ERR_OK)
         {
-            DEBUG_printf("close failed %d, calling abort\n", err);
+            printf("close failed %d, calling abort\n", err);
             tcp_abort(client_pcb);
             close_err = ERR_ABRT;
         }
@@ -83,11 +82,11 @@ static void tcp_server_close(TCP_SERVER_T *state)
 static err_t tcp_server_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
 {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
-    DEBUG_printf("tcp_server_sent %u\n", len);
+    printf("tcp_server_sent %u\n", len);
     con_state->sent_len += len;
     if (con_state->sent_len >= con_state->header_len + con_state->result_len)
     {
-        DEBUG_printf("all done\n");
+        printf("all done\n");
         return tcp_close_client_connection(con_state, pcb, ERR_OK);
     }
     return ERR_OK;
@@ -139,18 +138,13 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
     if (!p)
     {
-        DEBUG_printf("connection closed\n");
+        printf("connection closed\n");
         return tcp_close_client_connection(con_state, pcb, ERR_OK);
     }
     assert(con_state && con_state->pcb == pcb);
     if (p->tot_len > 0)
     {
-        DEBUG_printf("tcp_server_recv %d err %d\n", p->tot_len, err);
-#if 0
-        for (struct pbuf *q = p; q != NULL; q = q->next) {
-            DEBUG_printf("in: %.*s\n", q->len, q->payload);
-        }
-#endif
+        printf("tcp_server_recv %d err %d\n", p->tot_len, err);
         // Copy the request into the buffer
         pbuf_copy_partial(p, con_state->headers, p->tot_len > sizeof(con_state->headers) - 1 ? sizeof(con_state->headers) - 1 : p->tot_len, 0);
 
@@ -178,13 +172,13 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 
             // Generate content
             con_state->result_len = test_server_content(request, params, con_state->result, sizeof(con_state->result));
-            DEBUG_printf("Request: %s?%s\n", request, params);
-            DEBUG_printf("Result: %d\n", con_state->result_len);
+            printf("Request: %s?%s\n", request, params);
+            printf("Result: %d\n", con_state->result_len);
 
             // Check we had enough buffer space
             if (con_state->result_len > sizeof(con_state->result) - 1)
             {
-                DEBUG_printf("Too much result data %d\n", con_state->result_len);
+                printf("Too much result data %d\n", con_state->result_len);
                 return tcp_close_client_connection(con_state, pcb, ERR_CLSD);
             }
 
@@ -195,7 +189,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
                                                  200, con_state->result_len);
                 if (con_state->header_len > sizeof(con_state->headers) - 1)
                 {
-                    DEBUG_printf("Too much header data %d\n", con_state->header_len);
+                    printf("Too much header data %d\n", con_state->header_len);
                     return tcp_close_client_connection(con_state, pcb, ERR_CLSD);
                 }
             }
@@ -204,7 +198,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
                 // Send redirect
                 con_state->header_len = snprintf(con_state->headers, sizeof(con_state->headers), HTTP_RESPONSE_REDIRECT,
                                                  ipaddr_ntoa(con_state->gw));
-                DEBUG_printf("Sending redirect %s", con_state->headers);
+                printf("Sending redirect %s", con_state->headers);
             }
 
             // Send the headers to the client
@@ -212,7 +206,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
             err_t err = tcp_write(pcb, con_state->headers, con_state->header_len, 0);
             if (err != ERR_OK)
             {
-                DEBUG_printf("failed to write header data %d\n", err);
+                printf("failed to write header data %d\n", err);
                 return tcp_close_client_connection(con_state, pcb, err);
             }
 
@@ -222,7 +216,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
                 err = tcp_write(pcb, con_state->result, con_state->result_len, 0);
                 if (err != ERR_OK)
                 {
-                    DEBUG_printf("failed to write result data %d\n", err);
+                    printf("failed to write result data %d\n", err);
                     return tcp_close_client_connection(con_state, pcb, err);
                 }
             }
@@ -236,7 +230,7 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 static err_t tcp_server_poll(void *arg, struct tcp_pcb *pcb)
 {
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
-    DEBUG_printf("tcp_server_poll_fn\n");
+    printf("tcp_server_poll_fn\n");
     return tcp_close_client_connection(con_state, pcb, ERR_OK); // Just disconnect clent?
 }
 
@@ -245,7 +239,7 @@ static void tcp_server_err(void *arg, err_t err)
     TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
     if (err != ERR_ABRT)
     {
-        DEBUG_printf("tcp_client_err_fn %d\n", err);
+        printf("tcp_client_err_fn %d\n", err);
         tcp_close_client_connection(con_state, con_state->pcb, err);
     }
 }
@@ -255,16 +249,16 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
     TCP_SERVER_T *state = (TCP_SERVER_T *)arg;
     if (err != ERR_OK || client_pcb == NULL)
     {
-        DEBUG_printf("failure in accept\n");
+        printf("failure in accept\n");
         return ERR_VAL;
     }
-    DEBUG_printf("client connected\n");
+    printf("client connected\n");
 
     // Create the state for the connection
-    TCP_CONNECT_STATE_T *con_state = calloc(1, sizeof(TCP_CONNECT_STATE_T));
+    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)calloc(1, sizeof(TCP_CONNECT_STATE_T));
     if (!con_state)
     {
-        DEBUG_printf("failed to allocate connect state\n");
+        printf("failed to allocate connect state\n");
         return ERR_MEM;
     }
     con_state->pcb = client_pcb; // for checking
@@ -283,26 +277,26 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
 static bool tcp_server_open(void *arg, const char *ap_name)
 {
     TCP_SERVER_T *state = (TCP_SERVER_T *)arg;
-    DEBUG_printf("starting server on port %d\n", TCP_PORT);
+    printf("starting server on port %d\n", TCP_PORT);
 
     struct tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
     if (!pcb)
     {
-        DEBUG_printf("failed to create pcb\n");
+        printf("failed to create pcb\n");
         return false;
     }
 
     err_t err = tcp_bind(pcb, IP_ANY_TYPE, TCP_PORT);
     if (err)
     {
-        DEBUG_printf("failed to bind to port %d\n", TCP_PORT);
+        printf("failed to bind to port %d\n", TCP_PORT);
         return false;
     }
 
     state->server_pcb = tcp_listen_with_backlog(pcb, 1);
     if (!state->server_pcb)
     {
-        DEBUG_printf("failed to listen\n");
+        printf("failed to listen\n");
         if (pcb)
         {
             tcp_close(pcb);
@@ -340,21 +334,19 @@ void key_pressed_func(void *param)
     }
 }
 
-int main()
+void start_access_point()
 {
-    stdio_init_all();
-
-    TCP_SERVER_T *state = calloc(1, sizeof(TCP_SERVER_T));
+    TCP_SERVER_T *state = (TCP_SERVER_T *)calloc(1, sizeof(TCP_SERVER_T));
     if (!state)
     {
-        DEBUG_printf("failed to allocate state\n");
-        return 1;
+        printf("failed to allocate state\n");
+        return;
     }
 
     if (cyw43_arch_init())
     {
-        DEBUG_printf("failed to initialise\n");
-        return 1;
+        printf("failed to initialise\n");
+        return;
     }
 
     // Get notified if the user presses a key
@@ -386,8 +378,8 @@ int main()
 
     if (!tcp_server_open(state, ap_name))
     {
-        DEBUG_printf("failed to open server\n");
-        return 1;
+        printf("failed to open server\n");
+        return;
     }
 
     state->complete = false;
@@ -413,5 +405,11 @@ int main()
     dns_server_deinit(&dns_server);
     dhcp_server_deinit(&dhcp_server);
     cyw43_arch_deinit();
+}
+
+int main()
+{
+    stdio_init_all();
+    start_access_point();
     return 0;
 }

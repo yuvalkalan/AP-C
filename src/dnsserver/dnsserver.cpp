@@ -115,8 +115,7 @@ static int dns_socket_sendto(struct udp_pcb **udp, const void *buf, size_t len, 
 #endif
     return len;
 }
-
-static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port)
+static void dns_server_process_wrapper(dns_server_t *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port)
 {
     dns_server_t *d = arg;
     DEBUG_printf("dns_server_process %u\n", p->tot_len);
@@ -127,7 +126,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     size_t msg_len = pbuf_copy_partial(p, dns_msg, sizeof(dns_msg), 0);
     if (msg_len < sizeof(dns_header_t))
     {
-        goto ignore_request;
+        return;
     }
 
 #if DUMP_DATA
@@ -150,21 +149,21 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     if (((flags >> 15) & 0x1) != 0)
     {
         DEBUG_printf("Ignoring non-query\n");
-        goto ignore_request;
+        return;
     }
 
     // Check for standard query
     if (((flags >> 11) & 0xf) != 0)
     {
         DEBUG_printf("Ignoring non-standard query\n");
-        goto ignore_request;
+        return;
     }
 
     // Check question count
     if (question_count < 1)
     {
         DEBUG_printf("Invalid question count\n");
-        goto ignore_request;
+        return;
     }
 
     // Print the question
@@ -189,7 +188,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
             if (label_len > 63)
             {
                 DEBUG_printf("Invalid label\n");
-                goto ignore_request;
+                return;
             }
             DEBUG_printf("%.*s", label_len, question_ptr);
             question_ptr += label_len;
@@ -201,7 +200,7 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     if (question_ptr - question_ptr_start > 255)
     {
         DEBUG_printf("Invalid question length\n");
-        goto ignore_request;
+        return;
     }
 
     // Skip QNAME and QTYPE
@@ -240,8 +239,11 @@ static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, 
     // Send the reply
     DEBUG_printf("Sending %d byte reply to %s:%d\n", answer_ptr - dns_msg, ipaddr_ntoa(src_addr), src_port);
     dns_socket_sendto(&d->udp, &dns_msg, answer_ptr - dns_msg, src_addr, src_port);
+}
 
-ignore_request:
+static void dns_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port)
+{
+    dns_server_process_wrapper((dns_server_t *)arg, upcb, p, src_addr, src_port);
     pbuf_free(p);
 }
 

@@ -13,9 +13,9 @@ set(PICO_BOARD pico_w)
 pico_sdk_init()
 
 add_executable(${PROJECT_NAME}
-                src/main.c
-                src/dhcpserver/dhcpserver.c
-                src/dnsserver/dnsserver.c
+                src/main.cpp
+                src/dhcpserver/dhcpserver.cpp
+                src/dnsserver/dnsserver.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

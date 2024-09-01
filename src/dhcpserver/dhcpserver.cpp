@@ -198,8 +198,7 @@ static void opt_write_u32(uint8_t **opt, uint8_t cmd, uint32_t val)
     *o++ = val;
     *opt = o;
 }
-
-static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port)
+static void dhcp_server_process_wrapper(dhcp_server_t *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port)
 {
     dhcp_server_t *d = arg;
     (void)upcb;
@@ -212,13 +211,13 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p,
 #define DHCP_MIN_SIZE (240 + 3)
     if (p->tot_len < DHCP_MIN_SIZE)
     {
-        goto ignore_request;
+        return;
     }
 
     size_t len = pbuf_copy_partial(p, &dhcp_msg, sizeof(dhcp_msg), 0);
     if (len < DHCP_MIN_SIZE)
     {
-        goto ignore_request;
+        return;
     }
 
     dhcp_msg.op = DHCPOFFER;
@@ -231,7 +230,7 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p,
     if (msgtype == NULL)
     {
         // A DHCP package without MSG_TYPE?
-        goto ignore_request;
+        return;
     }
 
     switch (msgtype[2])
@@ -267,7 +266,7 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p,
         if (yi == DHCPS_MAX_IP)
         {
             // No more IP addresses left
-            goto ignore_request;
+            return;
         }
         dhcp_msg.yiaddr[3] = DHCPS_BASE_IP + yi;
         opt_write_u8(&opt, DHCP_OPT_MSG_TYPE, DHCPOFFER);
@@ -280,18 +279,18 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p,
         if (o == NULL)
         {
             // Should be NACK
-            goto ignore_request;
+            return;
         }
         if (memcmp(o + 2, &ip4_addr_get_u32(ip_2_ip4(&d->ip)), 3) != 0)
         {
             // Should be NACK
-            goto ignore_request;
+            return;
         }
         uint8_t yi = o[5] - DHCPS_BASE_IP;
         if (yi >= DHCPS_MAX_IP)
         {
             // Should be NACK
-            goto ignore_request;
+            return;
         }
         if (memcmp(d->lease[yi].mac, dhcp_msg.chaddr, MAC_LEN) == 0)
         {
@@ -306,7 +305,7 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p,
         {
             // IP already in use
             // Should be NACK
-            goto ignore_request;
+            return;
         }
         d->lease[yi].expiry = (cyw43_hal_ticks_ms() + DEFAULT_LEASE_TIME_S * 1000) >> 16;
         dhcp_msg.yiaddr[3] = DHCPS_BASE_IP + yi;
@@ -318,7 +317,7 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p,
     }
 
     default:
-        goto ignore_request;
+        return;
     }
 
     opt_write_n(&opt, DHCP_OPT_SERVER_ID, 4, &ip4_addr_get_u32(ip_2_ip4(&d->ip)));
@@ -329,8 +328,10 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p,
     *opt++ = DHCP_OPT_END;
     struct netif *nif = ip_current_input_netif();
     dhcp_socket_sendto(&d->udp, nif, &dhcp_msg, opt - (uint8_t *)&dhcp_msg, 0xffffffff, PORT_DHCP_CLIENT);
-
-ignore_request:
+}
+static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port)
+{
+    dhcp_server_process_wrapper((dhcp_server_t *)arg, upcb, p, src_addr, src_port);
     pbuf_free(p);
 }
 
