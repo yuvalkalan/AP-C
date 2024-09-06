@@ -1,11 +1,8 @@
 #include <string.h>
-
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
-
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
-
 #include "dhcpserver/dhcpserver.h"
 #include "dnsserver/dnsserver.h"
 
@@ -15,9 +12,9 @@
 #define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
 #define LED_TEST_BODY "<html><body><h1>Hello from Pico W.</h1><p>Led is %s</p><p><a href=\"?led=%d\">Turn led %s</a></body></html>"
 #define LED_PARAM "led=%d"
-#define LED_TEST "/ledtest"
+#define SETTINGS_PAGE "/settings"
 #define LED_GPIO 0
-#define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
+#define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" SETTINGS_PAGE "\n\n"
 
 #define AP_WIFI_NAME "tester"
 #define AP_WIFI_PASSWORD "12345678"
@@ -91,7 +88,7 @@ static err_t tcp_server_sent(void *arg, tcp_pcb *pcb, u16_t len)
 static int test_server_content(const char *request, const char *params, char *result, size_t max_result_len)
 {
     int len = 0;
-    if (strncmp(request, LED_TEST, sizeof(LED_TEST) - 1) == 0)
+    if (strncmp(request, SETTINGS_PAGE, sizeof(SETTINGS_PAGE) - 1) == 0)
     {
         // Get the state of the led
         bool value;
@@ -117,14 +114,10 @@ static int test_server_content(const char *request, const char *params, char *re
             }
         }
         // Generate result
-        if (led_state)
-        {
-            len = snprintf(result, max_result_len, LED_TEST_BODY, "ON", 0, "OFF");
-        }
-        else
-        {
-            len = snprintf(result, max_result_len, LED_TEST_BODY, "OFF", 1, "ON");
-        }
+        len = snprintf(result, max_result_len, LED_TEST_BODY,
+                       led_state ? "ON" : "OFF",
+                       0,
+                       led_state ? "OFF" : "ON");
     }
     return len;
 }
