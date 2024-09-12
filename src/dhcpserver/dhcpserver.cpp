@@ -1,6 +1,37 @@
+/*
+ * This file is part of the MicroPython project, http://micropython.org/
+ *
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2018-2019 Damien P. George
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
+// For DHCP specs see:
+//  https://www.ietf.org/rfc/rfc2131.txt
+//  https://tools.ietf.org/html/rfc2132 -- DHCP Options and BOOTP Vendor Extensions
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+
 #include "cyw43_config.h"
 #include "dhcpserver.h"
 #include "lwip/udp.h"
@@ -13,6 +44,7 @@
 #define DHCPNACK (6)
 #define DHCPRELEASE (7)
 #define DHCPINFORM (8)
+
 #define DHCP_OPT_PAD (0)
 #define DHCP_OPT_SUBNET_MASK (1)
 #define DHCP_OPT_ROUTER (3)
@@ -27,9 +59,12 @@
 #define DHCP_OPT_VENDOR_CLASS_ID (60)
 #define DHCP_OPT_CLIENT_ID (61)
 #define DHCP_OPT_END (255)
+
 #define PORT_DHCP_SERVER (67)
 #define PORT_DHCP_CLIENT (68)
+
 #define DEFAULT_LEASE_TIME_S (24 * 60 * 60) // in seconds
+
 #define MAC_LEN (6)
 #define MAKE_IP4(a, b, c, d) ((a) << 24 | (b) << 16 | (c) << 8 | (d))
 
@@ -51,6 +86,7 @@ typedef struct
     uint8_t file[128];    // boot file name
     uint8_t options[312]; // optional parameters, variable, starts with magic
 } dhcp_msg_t;
+
 static int dhcp_socket_new_dgram(struct udp_pcb **udp, void *cb_data, udp_recv_fn cb_udp_recv)
 {
     // family is AF_INET
@@ -67,6 +103,7 @@ static int dhcp_socket_new_dgram(struct udp_pcb **udp, void *cb_data, udp_recv_f
 
     return 0; // success
 }
+
 static void dhcp_socket_free(struct udp_pcb **udp)
 {
     if (*udp != NULL)
@@ -75,11 +112,13 @@ static void dhcp_socket_free(struct udp_pcb **udp)
         *udp = NULL;
     }
 }
+
 static int dhcp_socket_bind(struct udp_pcb **udp, uint16_t port)
 {
     // TODO convert lwIP errors to errno
     return udp_bind(*udp, IP_ANY_TYPE, port);
 }
+
 static int dhcp_socket_sendto(struct udp_pcb **udp, struct netif *nif, const void *buf, size_t len, uint32_t ip, uint16_t port)
 {
     if (len > 0xffff)
@@ -116,6 +155,7 @@ static int dhcp_socket_sendto(struct udp_pcb **udp, struct netif *nif, const voi
 
     return len;
 }
+
 static uint8_t *opt_find(uint8_t *opt, uint8_t cmd)
 {
     for (int i = 0; i < 308 && opt[i] != DHCP_OPT_END;)
@@ -128,6 +168,7 @@ static uint8_t *opt_find(uint8_t *opt, uint8_t cmd)
     }
     return NULL;
 }
+
 static void opt_write_n(uint8_t **opt, uint8_t cmd, size_t n, const void *data)
 {
     uint8_t *o = *opt;
@@ -136,6 +177,7 @@ static void opt_write_n(uint8_t **opt, uint8_t cmd, size_t n, const void *data)
     memcpy(o, data, n);
     *opt = o + n;
 }
+
 static void opt_write_u8(uint8_t **opt, uint8_t cmd, uint8_t val)
 {
     uint8_t *o = *opt;
@@ -144,6 +186,7 @@ static void opt_write_u8(uint8_t **opt, uint8_t cmd, uint8_t val)
     *o++ = val;
     *opt = o;
 }
+
 static void opt_write_u32(uint8_t **opt, uint8_t cmd, uint32_t val)
 {
     uint8_t *o = *opt;
@@ -291,6 +334,7 @@ static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p,
     dhcp_server_process_wrapper((dhcp_server_t *)arg, upcb, p, src_addr, src_port);
     pbuf_free(p);
 }
+
 void dhcp_server_init(dhcp_server_t *d, ip_addr_t *ip, ip_addr_t *nm)
 {
     ip_addr_copy(d->ip, *ip);
@@ -302,6 +346,7 @@ void dhcp_server_init(dhcp_server_t *d, ip_addr_t *ip, ip_addr_t *nm)
     }
     dhcp_socket_bind(&d->udp, PORT_DHCP_SERVER);
 }
+
 void dhcp_server_deinit(dhcp_server_t *d)
 {
     dhcp_socket_free(&d->udp);
