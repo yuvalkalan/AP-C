@@ -10,24 +10,24 @@
 #define POLL_TIME_S 5
 #define HTTP_GET "GET"
 #define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
-#define LED_TEST_BODY "<html><body><h1>Hello from Pico W.</h1><p>Led is %s</p><p><a href=\"?led=%d\">Turn led %s</a></body></html>"
+#define LED_TEST_BODY "<html><body><h1>Setup</h1><p>Led is %s</p><p><a href=\"?led=%d\">Turn led %s</a></body></html>"
 #define LED_PARAM "led=%d"
-#define SETTINGS_PAGE "/settings"
+#define LED_TEST "/ledtest"
 #define LED_GPIO 0
-#define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" SETTINGS_PAGE "\n\n"
-
-#define AP_WIFI_NAME "tester"
-#define AP_WIFI_PASSWORD "12345678"
-
-typedef struct TCP_SERVER_T_
+#define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
+#define AP_WIFI_NAME "picow_test"
+#define AP_WIFI_PASSWORD "password"
+class TCPServer
 {
+public:
     tcp_pcb *server_pcb;
     bool complete;
     ip_addr_t gw;
     async_context_t *context;
-} TCP_SERVER_T;
-typedef struct TCP_CONNECT_STATE_T_
+};
+class TCPConnect
 {
+public:
     tcp_pcb *pcb;
     int sent_len;
     char headers[128];
@@ -35,9 +35,9 @@ typedef struct TCP_CONNECT_STATE_T_
     int header_len;
     int result_len;
     ip_addr_t *gw;
-} TCP_CONNECT_STATE_T;
+};
 
-static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, tcp_pcb *client_pcb, err_t close_err)
+static err_t tcp_close_client_connection(TCPConnect *con_state, tcp_pcb *client_pcb, err_t close_err)
 {
     if (client_pcb)
     {
@@ -61,8 +61,7 @@ static err_t tcp_close_client_connection(TCP_CONNECT_STATE_T *con_state, tcp_pcb
     }
     return close_err;
 }
-
-static void tcp_server_close(TCP_SERVER_T *state)
+static void tcp_server_close(TCPServer *state)
 {
     if (state->server_pcb)
     {
@@ -71,10 +70,9 @@ static void tcp_server_close(TCP_SERVER_T *state)
         state->server_pcb = NULL;
     }
 }
-
 static err_t tcp_server_sent(void *arg, tcp_pcb *pcb, u16_t len)
 {
-    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
+    TCPConnect *con_state = (TCPConnect *)arg;
     printf("tcp_server_sent %u\n", len);
     con_state->sent_len += len;
     if (con_state->sent_len >= con_state->header_len + con_state->result_len)
@@ -84,11 +82,10 @@ static err_t tcp_server_sent(void *arg, tcp_pcb *pcb, u16_t len)
     }
     return ERR_OK;
 }
-
 static int test_server_content(const char *request, const char *params, char *result, size_t max_result_len)
 {
     int len = 0;
-    if (strncmp(request, SETTINGS_PAGE, sizeof(SETTINGS_PAGE) - 1) == 0)
+    if (strncmp(request, LED_TEST, sizeof(LED_TEST) - 1) == 0)
     {
         // Get the state of the led
         bool value;
@@ -104,27 +101,26 @@ static int test_server_content(const char *request, const char *params, char *re
                 if (led_state)
                 {
                     // Turn led on
-                    cyw43_gpio_set(&cyw43_state, 0, true);
+                    cyw43_gpio_set(&cyw43_state, LED_GPIO, true);
                 }
                 else
                 {
                     // Turn led off
-                    cyw43_gpio_set(&cyw43_state, 0, false);
+                    cyw43_gpio_set(&cyw43_state, LED_GPIO, false);
                 }
             }
         }
         // Generate result
         len = snprintf(result, max_result_len, LED_TEST_BODY,
                        led_state ? "ON" : "OFF",
-                       0,
+                       led_state ? 0 : 1,
                        led_state ? "OFF" : "ON");
     }
     return len;
 }
-
 err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
 {
-    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
+    TCPConnect *con_state = (TCPConnect *)arg;
     if (!p)
     {
         printf("connection closed\n");
@@ -134,6 +130,11 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
     if (p->tot_len > 0)
     {
         printf("tcp_server_recv %d err %d\n", p->tot_len, err);
+#if 0
+        for ( pbuf *q = p; q != NULL; q = q->next) {
+            printf("in: %.*s\n", q->len, q->payload);
+        }
+#endif
         // Copy the request into the buffer
         pbuf_copy_partial(p, con_state->headers, p->tot_len > sizeof(con_state->headers) - 1 ? sizeof(con_state->headers) - 1 : p->tot_len, 0);
 
@@ -215,27 +216,24 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
     pbuf_free(p);
     return ERR_OK;
 }
-
 static err_t tcp_server_poll(void *arg, tcp_pcb *pcb)
 {
-    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
+    TCPConnect *con_state = (TCPConnect *)arg;
     printf("tcp_server_poll_fn\n");
     return tcp_close_client_connection(con_state, pcb, ERR_OK); // Just disconnect clent?
 }
-
 static void tcp_server_err(void *arg, err_t err)
 {
-    TCP_CONNECT_STATE_T *con_state = (TCP_CONNECT_STATE_T *)arg;
+    TCPConnect *con_state = (TCPConnect *)arg;
     if (err != ERR_ABRT)
     {
         printf("tcp_client_err_fn %d\n", err);
         tcp_close_client_connection(con_state, con_state->pcb, err);
     }
 }
-
 static err_t tcp_server_accept(void *arg, tcp_pcb *client_pcb, err_t err)
 {
-    TCP_SERVER_T *state = (TCP_SERVER_T *)arg;
+    TCPServer *state = (TCPServer *)arg;
     if (err != ERR_OK || client_pcb == NULL)
     {
         printf("failure in accept\n");
@@ -244,7 +242,7 @@ static err_t tcp_server_accept(void *arg, tcp_pcb *client_pcb, err_t err)
     printf("client connected\n");
 
     // Create the state for the connection
-    TCP_CONNECT_STATE_T *con_state = new TCP_CONNECT_STATE_T();
+    TCPConnect *con_state = new TCPConnect();
     if (!con_state)
     {
         printf("failed to allocate connect state\n");
@@ -262,10 +260,9 @@ static err_t tcp_server_accept(void *arg, tcp_pcb *client_pcb, err_t err)
 
     return ERR_OK;
 }
-
 static bool tcp_server_open(void *arg, const char *ap_name)
 {
-    TCP_SERVER_T *state = (TCP_SERVER_T *)arg;
+    TCPServer *state = (TCPServer *)arg;
     printf("starting server on port %d\n", TCP_PORT);
 
     tcp_pcb *pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
@@ -306,12 +303,10 @@ void key_pressed_worker_func(async_context_t *context, async_when_pending_worker
     assert(worker->user_data);
     printf("Disabling wifi\n");
     cyw43_arch_disable_ap_mode();
-    ((TCP_SERVER_T *)(worker->user_data))->complete = true;
+    ((TCPServer *)(worker->user_data))->complete = true;
 }
-
 static async_when_pending_worker_t key_pressed_worker = {
     .do_work = key_pressed_worker_func};
-
 void key_pressed_func(void *param)
 {
     assert(param);
@@ -319,14 +314,24 @@ void key_pressed_func(void *param)
     if (key == 'd' || key == 'D')
     {
         // We are probably in irq context so call wifi in a "worker"
-        async_context_set_work_pending(((TCP_SERVER_T *)param)->context, &key_pressed_worker);
+        async_context_set_work_pending(((TCPServer *)param)->context, &key_pressed_worker);
     }
 }
-
-void start_access_point()
+int main()
 {
-    TCP_SERVER_T *state = new TCP_SERVER_T();
-    cyw43_arch_init();
+    stdio_init_all();
+    TCPServer *state = new TCPServer();
+    if (!state)
+    {
+        printf("failed to allocate state\n");
+        return 1;
+    }
+
+    if (cyw43_arch_init())
+    {
+        printf("failed to initialise\n");
+        return 1;
+    }
 
     // Get notified if the user presses a key
     state->context = cyw43_arch_async_context();
@@ -334,7 +339,10 @@ void start_access_point()
     async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
     stdio_set_chars_available_callback(key_pressed_func, state);
 
-    cyw43_arch_enable_ap_mode(AP_WIFI_NAME, AP_WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK);
+    const char *ap_name = AP_WIFI_NAME;
+    const char *password = AP_WIFI_PASSWORD;
+
+    cyw43_arch_enable_ap_mode(ap_name, password, CYW43_AUTH_WPA2_AES_PSK);
 
     ip4_addr_t mask;
     IP4_ADDR(ip_2_ip4(&state->gw), 192, 168, 4, 1);
@@ -348,26 +356,34 @@ void start_access_point()
     dns_server_t dns_server;
     dns_server_init(&dns_server, &state->gw);
 
-    if (!tcp_server_open(state, AP_WIFI_NAME))
+    if (!tcp_server_open(state, ap_name))
     {
         printf("failed to open server\n");
-        return;
+        return 1;
     }
 
     state->complete = false;
     while (!state->complete)
     {
+        // the following #ifdef is only here so this same example can be used in multiple modes;
+        // you do not need it in your code
+#if PICO_CYW43_ARCH_POLL
+        // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
+        // main loop (not from a timer interrupt) to check for Wi-Fi driver or lwIP work that needs to be done.
+        cyw43_arch_poll();
+        // you can poll as often as you like, however if you have nothing else to do you can
+        // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
+        cyw43_arch_wait_for_work_until(make_timeout_time_ms(1000));
+#else
+        // if you are not using pico_cyw43_arch_poll, then Wi-FI driver and lwIP work
+        // is done via interrupt in the background. This sleep is just an example of some (blocking)
+        // work you might be doing.
         sleep_ms(1000);
+#endif
     }
     tcp_server_close(state);
     dns_server_deinit(&dns_server);
     dhcp_server_deinit(&dhcp_server);
     cyw43_arch_deinit();
-}
-
-int main()
-{
-    stdio_init_all();
-    start_access_point();
     return 0;
 }
