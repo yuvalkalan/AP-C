@@ -5,6 +5,7 @@
 #include "lwip/tcp.h"
 #include "dhcpserver/dhcpserver.h"
 #include "dnsserver/dnsserver.h"
+#include <tusb.h>
 
 #define TCP_PORT 80
 #define POLL_TIME_S 5
@@ -130,11 +131,6 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
     if (p->tot_len > 0)
     {
         printf("tcp_server_recv %d err %d\n", p->tot_len, err);
-#if 0
-        for ( pbuf *q = p; q != NULL; q = q->next) {
-            printf("in: %.*s\n", q->len, q->payload);
-        }
-#endif
         // Copy the request into the buffer
         pbuf_copy_partial(p, con_state->headers, p->tot_len > sizeof(con_state->headers) - 1 ? sizeof(con_state->headers) - 1 : p->tot_len, 0);
 
@@ -334,10 +330,10 @@ int main()
     }
 
     // Get notified if the user presses a key
-    state->context = cyw43_arch_async_context();
-    key_pressed_worker.user_data = state;
-    async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
-    stdio_set_chars_available_callback(key_pressed_func, state);
+    // state->context = cyw43_arch_async_context();
+    // key_pressed_worker.user_data = state;
+    // async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
+    // stdio_set_chars_available_callback(key_pressed_func, state);
 
     const char *ap_name = AP_WIFI_NAME;
     const char *password = AP_WIFI_PASSWORD;
@@ -365,21 +361,7 @@ int main()
     state->complete = false;
     while (!state->complete)
     {
-        // the following #ifdef is only here so this same example can be used in multiple modes;
-        // you do not need it in your code
-#if PICO_CYW43_ARCH_POLL
-        // if you are using pico_cyw43_arch_poll, then you must poll periodically from your
-        // main loop (not from a timer interrupt) to check for Wi-Fi driver or lwIP work that needs to be done.
-        cyw43_arch_poll();
-        // you can poll as often as you like, however if you have nothing else to do you can
-        // choose to sleep until either a specified time, or cyw43_arch_poll() has work to do:
-        cyw43_arch_wait_for_work_until(make_timeout_time_ms(1000));
-#else
-        // if you are not using pico_cyw43_arch_poll, then Wi-FI driver and lwIP work
-        // is done via interrupt in the background. This sleep is just an example of some (blocking)
-        // work you might be doing.
         sleep_ms(1000);
-#endif
     }
     tcp_server_close(state);
     dns_server_deinit(&dns_server);
