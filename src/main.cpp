@@ -85,6 +85,17 @@ static err_t tcp_server_sent(void *arg, tcp_pcb *pcb, u16_t len)
 }
 static int test_server_content(const char *request, const char *params, char *result, size_t max_result_len)
 {
+    // debug zone here -------------
+    printf("request is ---");
+    printf(request);
+    printf("---\n");
+    printf("params is ---");
+    printf(params);
+    printf("---\n");
+    printf("result is ---");
+    printf(result);
+    printf("---\n");
+    // -----------------------------
     int len = 0;
     if (strncmp(request, LED_TEST, sizeof(LED_TEST) - 1) == 0)
     {
@@ -138,6 +149,7 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
         if (strncmp(HTTP_GET, con_state->headers, sizeof(HTTP_GET) - 1) == 0)
         {
             char *request = con_state->headers + sizeof(HTTP_GET); // + space
+            printf("this is [%s]", request);
             char *params = strchr(request, '?');
             if (params)
             {
@@ -293,7 +305,7 @@ static bool tcp_server_open(void *arg, const char *ap_name)
     return true;
 }
 
-// // This "worker" function is called to safely perform work when instructed by key_pressed_func
+// This is "worker" function for key pressed
 void key_pressed_worker_func(async_context_t *context, async_when_pending_worker_t *worker)
 {
     assert(worker->user_data);
@@ -301,18 +313,10 @@ void key_pressed_worker_func(async_context_t *context, async_when_pending_worker
     cyw43_arch_disable_ap_mode();
     ((TCPServer *)(worker->user_data))->complete = true;
 }
+
 static async_when_pending_worker_t key_pressed_worker = {
     .do_work = key_pressed_worker_func};
-// void key_pressed_func(void *param)
-// {
-//     assert(param);
-//     int key = getchar_timeout_us(0); // get any pending key press but don't wait
-//     if (key == 'd' || key == 'D')
-//     {
-//         // We are probably in irq context so call wifi in a "worker"
-//         async_context_set_work_pending(((TCPServer *)param)->context, &key_pressed_worker);
-//     }
-// }
+
 int main()
 {
     stdio_init_all();
@@ -364,8 +368,7 @@ int main()
         int key = getchar_timeout_us(0);
         if (key == 'd' || key == 'D')
         {
-            // We are probably in irq context so call wifi in a "worker"
-            async_context_set_work_pending(((TCPServer *)state)->context, &key_pressed_worker);
+            async_context_set_work_pending(((TCPServer *)state)->context, &key_pressed_worker); // We are probably in irq context so call wifi in a "worker"
         }
         sleep_ms(1000);
     }
