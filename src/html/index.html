@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Date and Time Submission</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 50px;
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+        width: 300px;
+      }
+      label {
+        margin: 10px 0 5px;
+      }
+      input {
+        padding: 8px;
+        margin-bottom: 15px;
+      }
+      button {
+        padding: 10px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Submit Date and Time</h1>
+    <form id="dateTimeForm">
+      <label for="date">Date:</label>
+      <input type="date" id="date" name="date" required />
+
+      <label for="time">Time:</label>
+      <input type="time" id="time" name="time" required />
+
+      <button type="submit">Submit</button>
+    </form>
+
+    <script>
+      const form = document.getElementById("dateTimeForm");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault(); // Prevent page reload
+
+        const date = document.getElementById("date").value;
+        const time = document.getElementById("time").value;
+
+        const response = await fetch("http://localhost:80/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ date, time }),
+        });
+
+        const result = await response.json();
+        alert(result.message);
+      });
+    </script>
+  </body>
+</html>
