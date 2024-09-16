@@ -12,6 +12,12 @@ set(PICO_BOARD pico_w)
 
 pico_sdk_init()
 
+message("Running create_html python script")
+execute_process(COMMAND
+    py src/create_html.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+)
+
 add_executable(${PROJECT_NAME}
                 src/main.cpp
                 src/dhcpserver/dhcpserver.cpp

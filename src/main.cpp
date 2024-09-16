@@ -1,4 +1,4 @@
-#include <string.h>
+// #include <string.h>
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 #include "lwip/pbuf.h"
@@ -6,16 +6,16 @@
 #include "dhcpserver/dhcpserver.h"
 #include "dnsserver/dnsserver.h"
 #include <tusb.h>
-
+#include <string>
 #define TCP_PORT 80
 #define POLL_TIME_S 5
 #define HTTP_GET "GET"
 #define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
-#define LED_TEST_BODY "<html><body><h1>Setup</h1><p>Led is %s</p><p><a href=\"?led=%d\">Turn led %s</a></body></html>"
+#include "htmldata.cpp"
 #define LED_PARAM "led=%d"
-#define LED_TEST "/ledtest"
+#define PAGE_TITLE "/settings"
 #define LED_GPIO 0
-#define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" LED_TEST "\n\n"
+#define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" PAGE_TITLE "\n\n"
 #define AP_WIFI_NAME "picow_test"
 #define AP_WIFI_PASSWORD "password"
 class TCPServer
@@ -24,7 +24,7 @@ public:
     tcp_pcb *server_pcb;
     bool complete;
     ip_addr_t gw;
-    async_context_t *context;
+    // async_context_t *context;
 };
 class TCPConnect
 {
@@ -32,7 +32,7 @@ public:
     tcp_pcb *pcb;
     int sent_len;
     char headers[128];
-    char result[256];
+    char result[2560];
     int header_len;
     int result_len;
     ip_addr_t *gw;
@@ -74,11 +74,11 @@ static void tcp_server_close(TCPServer *state)
 static err_t tcp_server_sent(void *arg, tcp_pcb *pcb, u16_t len)
 {
     TCPConnect *con_state = (TCPConnect *)arg;
-    printf("tcp_server_sent %u\n", len);
+    // printf("tcp_server_sent %u\n", len);
     con_state->sent_len += len;
     if (con_state->sent_len >= con_state->header_len + con_state->result_len)
     {
-        printf("all done\n");
+        // printf("all done\n");
         return tcp_close_client_connection(con_state, pcb, ERR_OK);
     }
     return ERR_OK;
@@ -97,7 +97,7 @@ static int test_server_content(const char *request, const char *params, char *re
     printf("---\n");
     // -----------------------------
     int len = 0;
-    if (strncmp(request, LED_TEST, sizeof(LED_TEST) - 1) == 0)
+    if (strncmp(request, PAGE_TITLE, sizeof(PAGE_TITLE) - 1) == 0)
     {
         // Get the state of the led
         bool value;
@@ -107,7 +107,20 @@ static int test_server_content(const char *request, const char *params, char *re
         // See if the user changed it
         if (params)
         {
+            // Find the positions of "date=" and "time="
+            std::string input = params;
+            size_t date_pos = input.find("date=");
+            size_t time_pos = input.find("time=");
+
+            // Extract the date (from after "date=" until '&')
+            std::string date = input.substr(date_pos + 5, input.find("&", date_pos) - (date_pos + 5));
+
+            // Extract the time (from after "time=" until the end)
+            std::string time = input.substr(time_pos + 5);
             int led_param = sscanf(params, LED_PARAM, &led_state);
+            // char* date_param = sscanf(params, "date=%s"date=2024-09-18&time=06A40
+            printf("\n\n\n--------------------\nhere!!!\n--------------------\n\n\n");
+            printf("date is %s, time is %s\n", date.c_str(), time.c_str());
             if (led_param == 1)
             {
                 if (led_state)
@@ -123,10 +136,7 @@ static int test_server_content(const char *request, const char *params, char *re
             }
         }
         // Generate result
-        len = snprintf(result, max_result_len, LED_TEST_BODY,
-                       led_state ? "ON" : "OFF",
-                       led_state ? 0 : 1,
-                       led_state ? "OFF" : "ON");
+        len = snprintf(result, max_result_len, html_content);
     }
     return len;
 }
@@ -141,7 +151,7 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
     assert(con_state && con_state->pcb == pcb);
     if (p->tot_len > 0)
     {
-        printf("tcp_server_recv %d err %d\n", p->tot_len, err);
+        // printf("tcp_server_recv %d err %d\n", p->tot_len, err);
         // Copy the request into the buffer
         pbuf_copy_partial(p, con_state->headers, p->tot_len > sizeof(con_state->headers) - 1 ? sizeof(con_state->headers) - 1 : p->tot_len, 0);
 
@@ -149,7 +159,7 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
         if (strncmp(HTTP_GET, con_state->headers, sizeof(HTTP_GET) - 1) == 0)
         {
             char *request = con_state->headers + sizeof(HTTP_GET); // + space
-            printf("this is [%s]", request);
+            printf("HTTP REQUEST\n--------------------\nGET %s", request);
             char *params = strchr(request, '?');
             if (params)
             {
@@ -170,8 +180,8 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
 
             // Generate content
             con_state->result_len = test_server_content(request, params, con_state->result, sizeof(con_state->result));
-            printf("Request: %s?%s\n", request, params);
-            printf("Result: %d\n", con_state->result_len);
+            // printf("Request: %s?%s\n", request, params);
+            // printf("Result: %d\n", con_state->result_len);
 
             // Check we had enough buffer space
             if (con_state->result_len > sizeof(con_state->result) - 1)
@@ -227,7 +237,7 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
 static err_t tcp_server_poll(void *arg, tcp_pcb *pcb)
 {
     TCPConnect *con_state = (TCPConnect *)arg;
-    printf("tcp_server_poll_fn\n");
+    // printf("tcp_server_poll_fn\n");
     return tcp_close_client_connection(con_state, pcb, ERR_OK); // Just disconnect clent?
 }
 static void tcp_server_err(void *arg, err_t err)
@@ -235,7 +245,7 @@ static void tcp_server_err(void *arg, err_t err)
     TCPConnect *con_state = (TCPConnect *)arg;
     if (err != ERR_ABRT)
     {
-        printf("tcp_client_err_fn %d\n", err);
+        // printf("tcp_client_err_fn %d\n", err);
         tcp_close_client_connection(con_state, con_state->pcb, err);
     }
 }
@@ -305,18 +315,6 @@ static bool tcp_server_open(void *arg, const char *ap_name)
     return true;
 }
 
-// This is "worker" function for key pressed
-void key_pressed_worker_func(async_context_t *context, async_when_pending_worker_t *worker)
-{
-    assert(worker->user_data);
-    printf("Disabling wifi\n");
-    cyw43_arch_disable_ap_mode();
-    ((TCPServer *)(worker->user_data))->complete = true;
-}
-
-static async_when_pending_worker_t key_pressed_worker = {
-    .do_work = key_pressed_worker_func};
-
 int main()
 {
     stdio_init_all();
@@ -334,9 +332,7 @@ int main()
     }
 
     // Get notified if the user presses a key
-    state->context = cyw43_arch_async_context();
-    key_pressed_worker.user_data = state;
-    async_context_add_when_pending_worker(cyw43_arch_async_context(), &key_pressed_worker);
+    auto context = cyw43_arch_async_context();
 
     const char *ap_name = AP_WIFI_NAME;
     const char *password = AP_WIFI_PASSWORD;
@@ -368,7 +364,9 @@ int main()
         int key = getchar_timeout_us(0);
         if (key == 'd' || key == 'D')
         {
-            async_context_set_work_pending(((TCPServer *)state)->context, &key_pressed_worker); // We are probably in irq context so call wifi in a "worker"
+            printf("Disabling wifi\n");
+            cyw43_arch_disable_ap_mode();
+            state->complete = true;
         }
         sleep_ms(1000);
     }
