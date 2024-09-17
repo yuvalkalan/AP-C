@@ -32,16 +32,27 @@
     </style>
   </head>
   <body>
-    <h1>Submit Date and Time</h1>
-    <a href="?led=0">0</a>
-    <a href="?led=1">1</a>
+    <h1>Settings</h1>
+    <!-- <a href="?led=0">0</a>
+    <a href="?led=1">1</a> -->
     <form id="dateTimeForm">
-      <label for="date">Date:</label>
-      <input type="date" id="date" name="date" required />
+      <h2>Current Time</h2>
+      <label for="currentDate">Date:</label>
+      <input type="date" id="currentDate" name="currentDate" required />
+      <label for="currentTime">Time:</label>
+      <input type="time" id="currentTime" name="currentTime" required />
 
-      <label for="time">Time:</label>
-      <input type="time" id="time" name="time" required />
+      <h2>Start Time</h2>
+      <label for="startDate">Date:</label>
+      <input type="date" id="startDate" name="startDate" required />
+      <label for="startTime">Time:</label>
+      <input type="time" id="startTime" name="startTime" required />
 
+      <h2>Birthday Time</h2>
+      <label for="birthdayDate">Date:</label>
+      <input type="date" id="birthdayDate" name="birthdayDate" required />
+      <label for="birthdayTime">Time:</label>
+      <input type="time" id="birthdayTime" name="birthdayTime" required />
       <button type="submit">Submit</button>
     </form>
 
@@ -51,15 +62,25 @@
       form.addEventListener("submit", async (event) => {
         event.preventDefault(); // Prevent page reload
 
-        const date = document.getElementById("date").value;
-        const time = document.getElementById("time").value;
-
+        const currentDate = document.getElementById("currentDate").value;
+        const currentTime = document.getElementById("currentTime").value;
+        const startDate = document.getElementById("startDate").value;
+        const startTime = document.getElementById("startTime").value;
+        const birthdayDate = document.getElementById("birthdayDate").value;
+        const birthdayTime = document.getElementById("birthdayTime").value;
         const response = await fetch("http://localhost:80/submit", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ date, time }),
+          body: JSON.stringify({
+            currentDate,
+            currentTime,
+            startDate,
+            startTime,
+            birthdayDate,
+            birthdayTime,
+          }),
         });
 
         const result = await response.json();

@@ -1,4 +1,4 @@
-// #include <string.h>
+// pico sdk libs ----------------------
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 #include "lwip/pbuf.h"
@@ -6,18 +6,37 @@
 #include "dhcpserver/dhcpserver.h"
 #include "dnsserver/dnsserver.h"
 #include <tusb.h>
+// ------------------------------------
+// pure C/C++ libs ---------------------
 #include <string>
+#include <map>
+#include <sstream>
+// ------------------------------------
+// html c-style index file ------------
+#include "htmldata.cpp"
+// ------------------------------------
+
+// http server settings ---------------
 #define TCP_PORT 80
 #define POLL_TIME_S 5
 #define HTTP_GET "GET"
 #define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
-#include "htmldata.cpp"
-#define LED_PARAM "led=%d"
 #define PAGE_TITLE "/settings"
-#define LED_GPIO 0
 #define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" PAGE_TITLE "\n\n"
+// ------------------------------------
+// AP Wifi settings -------------------
 #define AP_WIFI_NAME "picow_test"
 #define AP_WIFI_PASSWORD "password"
+// ------------------------------------
+// http req params --------------------
+#define PARAM_CURRENT_DATE "currentDate"
+#define PARAM_CURRENT_TIME "currentTime"
+#define PARAM_START_DATE "startDate"
+#define PARAM_START_TIME "startTime"
+#define PARAM_BIRTHDAY_DATE "birthdayDate"
+#define PARAM_BIRTHDAY_TIME "birthdayTime"
+// ------------------------------------
+
 class TCPServer
 {
 public:
@@ -31,11 +50,39 @@ class TCPConnect
 public:
     tcp_pcb *pcb;
     int sent_len;
-    char headers[128];
-    char result[2560];
+    char headers[512];
+    char result[8192];
     int header_len;
     int result_len;
     ip_addr_t *gw;
+};
+
+class Date
+{
+private:
+    uint8_t m_day;
+    uint8_t m_month;
+    uint m_year;
+
+public:
+    Date(std::string date) : m_year(std::stoi(date.substr(0, 4))),
+                             m_month(std::stoi(date.substr(5, 2))),
+                             m_day(std::stoi(date.substr(8, 2)))
+    {
+        // date format should be "yyyy-mm-dd"
+    }
+};
+
+class Time
+{
+private:
+    uint8_t m_hours;
+    uint8_t m_minutes;
+    uint8_t m_seconds;
+    Time(std::string time) : m_hours(std::stoi(time.substr(0, 2))), m_minutes(std::stoi(time.substr(5, 2))), m_seconds(0)
+    {
+        // time format should be "HH%3AMM"
+    }
 };
 
 static err_t tcp_close_client_connection(TCPConnect *con_state, tcp_pcb *client_pcb, err_t close_err)
@@ -83,61 +130,52 @@ static err_t tcp_server_sent(void *arg, tcp_pcb *pcb, u16_t len)
     }
     return ERR_OK;
 }
+
+// Function to parse query string and return a map of key-value pairs
+std::map<std::string, std::string> extract_params(const std::string &queryString)
+{
+    std::map<std::string, std::string> params;
+    std::stringstream ss(queryString);
+    std::string token;
+
+    while (std::getline(ss, token, '&'))
+    {
+
+        size_t pos = token.find('=');
+
+        if (pos != std::string::npos)
+        {
+            std::string key = token.substr(0, pos);
+            std::string value = token.substr(pos + 1);
+            printf("key = %s, value = %s", key.c_str(), value.c_str());
+            params[key] = value;
+        }
+    }
+    return params;
+}
+
 static int test_server_content(const char *request, const char *params, char *result, size_t max_result_len)
 {
-    // debug zone here -------------
-    printf("request is ---");
-    printf(request);
-    printf("---\n");
-    printf("params is ---");
-    printf(params);
-    printf("---\n");
-    printf("result is ---");
-    printf(result);
-    printf("---\n");
+    // debug -----------------------
+    printf("request is <%s>\n", request);
+    printf("params is <%s>\n", params);
     // -----------------------------
     int len = 0;
     if (strncmp(request, PAGE_TITLE, sizeof(PAGE_TITLE) - 1) == 0)
     {
-        // Get the state of the led
-        bool value;
-        cyw43_gpio_get(&cyw43_state, LED_GPIO, &value);
-        int led_state = value;
-
-        // See if the user changed it
+        // See if the user sent params
         if (params)
         {
-            // Find the positions of "date=" and "time="
-            std::string input = params;
-            size_t date_pos = input.find("date=");
-            size_t time_pos = input.find("time=");
-
-            // Extract the date (from after "date=" until '&')
-            std::string date = input.substr(date_pos + 5, input.find("&", date_pos) - (date_pos + 5));
-
-            // Extract the time (from after "time=" until the end)
-            std::string time = input.substr(time_pos + 5);
-            int led_param = sscanf(params, LED_PARAM, &led_state);
-            // char* date_param = sscanf(params, "date=%s"date=2024-09-18&time=06A40
-            printf("\n\n\n--------------------\nhere!!!\n--------------------\n\n\n");
-            printf("date is %s, time is %s\n", date.c_str(), time.c_str());
-            if (led_param == 1)
-            {
-                if (led_state)
-                {
-                    // Turn led on
-                    cyw43_gpio_set(&cyw43_state, LED_GPIO, true);
-                }
-                else
-                {
-                    // Turn led off
-                    cyw43_gpio_set(&cyw43_state, LED_GPIO, false);
-                }
-            }
+            printf("\ngot params!\n\n");
+            auto params_map = extract_params(params);
+            printf("current:\n\tdate is %s, time is %s\n", params_map[PARAM_CURRENT_DATE].c_str(), params_map[PARAM_CURRENT_TIME].c_str());
+            printf("start:\n\tdate is %s, time is %s\n", params_map[PARAM_START_DATE].c_str(), params_map[PARAM_START_TIME].c_str());
+            printf("birthday:\n\tdate is %s, time is %s\n", params_map[PARAM_BIRTHDAY_DATE].c_str(), params_map[PARAM_BIRTHDAY_TIME].c_str());
         }
         // Generate result
         len = snprintf(result, max_result_len, html_content);
     }
+    // printf("result is <%s>\n", result);
     return len;
 }
 err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
