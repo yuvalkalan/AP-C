@@ -22,6 +22,7 @@ add_executable(${PROJECT_NAME}
                 src/main.cpp
                 src/access_point/dhcpserver/dhcpserver.cpp
                 src/access_point/dnsserver/dnsserver.cpp
+                src/access_point/access_point.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

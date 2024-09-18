@@ -1,0 +1,95 @@
+#pragma once
+
+// pico sdk libs ----------------------
+#include "pico/cyw43_arch.h"
+#include "lwip/pbuf.h"
+#include "lwip/tcp.h"
+#include "dhcpserver/dhcpserver.h"
+#include "dnsserver/dnsserver.h"
+#include <tusb.h>
+// ------------------------------------
+// pure C/C++ libs ---------------------
+#include <string>
+#include <map>
+#include <sstream>
+// ------------------------------------
+// html c-style index file ------------
+#include "htmldata.cpp"
+// ------------------------------------
+// http server settings ---------------
+#define TCP_PORT 80
+#define POLL_TIME_S 5
+#define HTTP_GET "GET"
+#define HTTP_RESPONSE_HEADERS "HTTP/1.1 %d OK\nContent-Length: %d\nContent-Type: text/html; charset=utf-8\nConnection: close\n\n"
+#define PAGE_TITLE "/settings"
+#define HTTP_RESPONSE_REDIRECT "HTTP/1.1 302 Redirect\nLocation: http://%s" PAGE_TITLE "\n\n"
+// ------------------------------------
+// AP Wifi settings -------------------
+#define AP_WIFI_NAME "picow_test"
+#define AP_WIFI_PASSWORD "password"
+// ------------------------------------
+// http req params --------------------
+#define PARAM_CURRENT_DATE "currentDate"
+#define PARAM_CURRENT_TIME "currentTime"
+#define PARAM_START_DATE "startDate"
+#define PARAM_START_TIME "startTime"
+#define PARAM_BIRTHDAY_DATE "birthdayDate"
+#define PARAM_BIRTHDAY_TIME "birthdayTime"
+// ------------------------------------
+
+class TCPServer
+{
+public:
+    tcp_pcb *server_pcb;
+    bool complete;
+    ip_addr_t gw;
+};
+class TCPConnect
+{
+public:
+    tcp_pcb *pcb;
+    int sent_len;
+    char headers[512];
+    char result[8192];
+    int header_len;
+    int result_len;
+    ip_addr_t *gw;
+};
+
+class Date
+{
+private:
+    uint8_t m_day;
+    uint8_t m_month;
+    uint m_year;
+
+public:
+    Date(std::string date) : m_year(std::stoi(date.substr(0, 4))),
+                             m_month(std::stoi(date.substr(5, 2))),
+                             m_day(std::stoi(date.substr(8, 2)))
+    {
+        // date format should be "yyyy-mm-dd"
+    }
+};
+class Time
+{
+private:
+    uint8_t m_hours;
+    uint8_t m_minutes;
+    uint8_t m_seconds;
+    Time(std::string time) : m_hours(std::stoi(time.substr(0, 2))), m_minutes(std::stoi(time.substr(5, 2))), m_seconds(0)
+    {
+        // time format should be "HH%3AMM"
+    }
+};
+
+static err_t tcp_close_client_connection(TCPConnect *con_state, tcp_pcb *client_pcb, err_t close_err);
+void tcp_server_close(TCPServer *state);
+static err_t tcp_server_sent(void *arg, tcp_pcb *pcb, u16_t len);
+static std::map<std::string, std::string> extract_params(const std::string &params);
+static int handle_http(const char *request, const char *params, char *result, size_t max_result_len);
+err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err);
+static err_t tcp_server_poll(void *arg, tcp_pcb *pcb);
+static void tcp_server_err(void *arg, err_t err);
+static err_t tcp_server_accept(void *arg, tcp_pcb *client_pcb, err_t err);
+bool tcp_server_open(void *arg, const char *ap_name);
