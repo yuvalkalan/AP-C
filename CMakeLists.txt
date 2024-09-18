@@ -20,12 +20,12 @@ execute_process(COMMAND
 
 add_executable(${PROJECT_NAME}
                 src/main.cpp
-                src/dhcpserver/dhcpserver.cpp
-                src/dnsserver/dnsserver.cpp
+                src/access_point/dhcpserver/dhcpserver.cpp
+                src/access_point/dnsserver/dnsserver.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/src
+    ${CMAKE_CURRENT_LIST_DIR}/src/access_point
 )
 
 

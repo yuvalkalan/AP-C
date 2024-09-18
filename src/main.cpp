@@ -3,8 +3,8 @@
 #include "pico/stdlib.h"
 #include "lwip/pbuf.h"
 #include "lwip/tcp.h"
-#include "dhcpserver/dhcpserver.h"
-#include "dnsserver/dnsserver.h"
+#include "access_point/dhcpserver/dhcpserver.h"
+#include "access_point/dnsserver/dnsserver.h"
 #include <tusb.h>
 // ------------------------------------
 // pure C/C++ libs ---------------------
@@ -132,10 +132,10 @@ static err_t tcp_server_sent(void *arg, tcp_pcb *pcb, u16_t len)
 }
 
 // Function to parse query string and return a map of key-value pairs
-std::map<std::string, std::string> extract_params(const std::string &queryString)
+std::map<std::string, std::string> extract_params(const std::string &params)
 {
-    std::map<std::string, std::string> params;
-    std::stringstream ss(queryString);
+    std::map<std::string, std::string> params_map;
+    std::stringstream ss(params);
     std::string token;
 
     while (std::getline(ss, token, '&'))
@@ -148,13 +148,13 @@ std::map<std::string, std::string> extract_params(const std::string &queryString
             std::string key = token.substr(0, pos);
             std::string value = token.substr(pos + 1);
             printf("key = %s, value = %s", key.c_str(), value.c_str());
-            params[key] = value;
+            params_map[key] = value;
         }
     }
-    return params;
+    return params_map;
 }
 
-static int test_server_content(const char *request, const char *params, char *result, size_t max_result_len)
+static int handle_http(const char *request, const char *params, char *result, size_t max_result_len)
 {
     // debug -----------------------
     printf("request is <%s>\n", request);
@@ -217,7 +217,7 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
             }
 
             // Generate content
-            con_state->result_len = test_server_content(request, params, con_state->result, sizeof(con_state->result));
+            con_state->result_len = handle_http(request, params, con_state->result, sizeof(con_state->result));
             // printf("Request: %s?%s\n", request, params);
             // printf("Result: %d\n", con_state->result_len);
 
@@ -412,5 +412,6 @@ int main()
     dns_server_deinit(&dns_server);
     dhcp_server_deinit(&dhcp_server);
     cyw43_arch_deinit();
+    delete state;
     return 0;
 }
