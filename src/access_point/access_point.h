@@ -16,6 +16,10 @@
 // html c-style index file ------------
 #include "htmldata.cpp"
 // ------------------------------------
+// storage control --------------------
+#include "Settings/Settings.h"
+// ------------------------------------
+
 // http server settings ---------------
 #define TCP_PORT 80
 #define POLL_TIME_S 5
@@ -37,16 +41,15 @@
 #define PARAM_BIRTHDAY_TIME "birthdayTime"
 // ------------------------------------
 
-class TCPServer
+struct TCPServer
 {
-public:
     tcp_pcb *server_pcb;
     bool complete;
     ip_addr_t gw;
+    Settings *settings;
 };
-class TCPConnect
+struct TCPConnect
 {
-public:
     tcp_pcb *pcb;
     int sent_len;
     char headers[512];
@@ -54,6 +57,7 @@ public:
     int header_len;
     int result_len;
     ip_addr_t *gw;
+    Settings *settings;
 };
 
 class Date
@@ -64,30 +68,23 @@ private:
     uint m_year;
 
 public:
-    Date(std::string date) : m_year(std::stoi(date.substr(0, 4))),
-                             m_month(std::stoi(date.substr(5, 2))),
-                             m_day(std::stoi(date.substr(8, 2)))
-    {
-        // date format should be "yyyy-mm-dd"
-    }
+    Date(std::string date);
 };
+
 class Time
 {
 private:
     uint8_t m_hours;
     uint8_t m_minutes;
     uint8_t m_seconds;
-    Time(std::string time) : m_hours(std::stoi(time.substr(0, 2))), m_minutes(std::stoi(time.substr(5, 2))), m_seconds(0)
-    {
-        // time format should be "HH%3AMM"
-    }
+    Time(std::string time);
 };
 
 static err_t tcp_close_client_connection(TCPConnect *con_state, tcp_pcb *client_pcb, err_t close_err);
 void tcp_server_close(TCPServer *state);
 static err_t tcp_server_sent(void *arg, tcp_pcb *pcb, u16_t len);
 static std::map<std::string, std::string> extract_params(const std::string &params);
-static int handle_http(const char *request, const char *params, char *result, size_t max_result_len);
+static int handle_http(const char *request, const char *params, char *result, size_t max_result_len, Settings &settings);
 err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err);
 static err_t tcp_server_poll(void *arg, tcp_pcb *pcb);
 static void tcp_server_err(void *arg, err_t err);

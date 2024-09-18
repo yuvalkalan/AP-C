@@ -1,6 +1,18 @@
 
 #include "access_point.h"
 
+Date::Date(std::string date) : m_year(std::stoi(date.substr(0, 4))),
+                               m_month(std::stoi(date.substr(5, 2))),
+                               m_day(std::stoi(date.substr(8, 2)))
+{
+    // date format should be "yyyy-mm-dd"
+}
+
+Time::Time(std::string time) : m_hours(std::stoi(time.substr(0, 2))), m_minutes(std::stoi(time.substr(5, 2))), m_seconds(0)
+{
+    // time format should be "HH%3AMM"
+}
+
 static err_t tcp_close_client_connection(TCPConnect *con_state, tcp_pcb *client_pcb, err_t close_err)
 {
     if (client_pcb)
@@ -62,35 +74,11 @@ static std::map<std::string, std::string> extract_params(const std::string &para
         {
             std::string key = token.substr(0, pos);
             std::string value = token.substr(pos + 1);
-            printf("key = %s, value = %s", key.c_str(), value.c_str());
+            printf("key = %s, value = %s\n", key.c_str(), value.c_str());
             params_map[key] = value;
         }
     }
     return params_map;
-}
-static int handle_http(const char *request, const char *params, char *result, size_t max_result_len)
-{
-    // debug -----------------------
-    printf("request is <%s>\n", request);
-    printf("params is <%s>\n", params);
-    // -----------------------------
-    int len = 0;
-    if (strncmp(request, PAGE_TITLE, sizeof(PAGE_TITLE) - 1) == 0)
-    {
-        // See if the user sent params
-        if (params)
-        {
-            printf("\ngot params!\n\n");
-            auto params_map = extract_params(params);
-            printf("current:\n\tdate is %s, time is %s\n", params_map[PARAM_CURRENT_DATE].c_str(), params_map[PARAM_CURRENT_TIME].c_str());
-            printf("start:\n\tdate is %s, time is %s\n", params_map[PARAM_START_DATE].c_str(), params_map[PARAM_START_TIME].c_str());
-            printf("birthday:\n\tdate is %s, time is %s\n", params_map[PARAM_BIRTHDAY_DATE].c_str(), params_map[PARAM_BIRTHDAY_TIME].c_str());
-        }
-        // Generate result
-        len = snprintf(result, max_result_len, html_content);
-    }
-    // printf("result is <%s>\n", result);
-    return len;
 }
 err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
 {
@@ -131,7 +119,7 @@ err_t tcp_server_recv(void *arg, tcp_pcb *pcb, pbuf *p, err_t err)
             }
 
             // Generate content
-            con_state->result_len = handle_http(request, params, con_state->result, sizeof(con_state->result));
+            con_state->result_len = handle_http(request, params, con_state->result, sizeof(con_state->result), *(con_state->settings));
             // printf("Request: %s?%s\n", request, params);
             // printf("Result: %d\n", con_state->result_len);
 
@@ -220,6 +208,7 @@ static err_t tcp_server_accept(void *arg, tcp_pcb *client_pcb, err_t err)
     }
     con_state->pcb = client_pcb; // for checking
     con_state->gw = &state->gw;
+    con_state->settings = state->settings;
 
     // setup connection to client
     tcp_arg(client_pcb, con_state);
@@ -265,4 +254,30 @@ bool tcp_server_open(void *arg, const char *ap_name)
 
     printf("Try connecting to '%s' (press 'd' to disable access point)\n", ap_name);
     return true;
+}
+
+static int handle_http(const char *request, const char *params, char *result, size_t max_result_len, Settings &settings)
+{
+    // debug -----------------------
+    printf("request is <%s>\n", request);
+    printf("params is <%s>\n", params);
+    // -----------------------------
+    int len = 0;
+    // if the user refering the page
+    if (strncmp(request, PAGE_TITLE, sizeof(PAGE_TITLE) - 1) == 0)
+    {
+        // See if the user sent params
+        if (params)
+        {
+            printf("\ngot params!\n\n");
+            auto params_map = extract_params(params);
+            printf("current:\n\tdate is %s, time is %s\n", params_map[PARAM_CURRENT_DATE].c_str(), params_map[PARAM_CURRENT_TIME].c_str());
+            printf("start:\n\tdate is %s, time is %s\n", params_map[PARAM_START_DATE].c_str(), params_map[PARAM_START_TIME].c_str());
+            printf("birthday:\n\tdate is %s, time is %s\n", params_map[PARAM_BIRTHDAY_DATE].c_str(), params_map[PARAM_BIRTHDAY_TIME].c_str());
+        }
+        // Generate result
+        len = snprintf(result, max_result_len, html_content);
+    }
+    // printf("result is <%s>\n", result);
+    return len;
 }

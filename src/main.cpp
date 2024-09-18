@@ -2,7 +2,7 @@
 #include "pico/stdlib.h"
 #include "access_point/access_point.h"
 
-void ap_mode()
+void ap_mode(Settings &settings)
 {
     TCPServer *state = new TCPServer();
     if (!state)
@@ -37,6 +37,8 @@ void ap_mode()
     dns_server_t dns_server;
     dns_server_init(&dns_server, &state->gw);
 
+    state->settings = &settings;
+
     if (!tcp_server_open(state, ap_name))
     {
         printf("failed to open server\n");
@@ -66,6 +68,11 @@ void ap_mode()
 int main()
 {
     stdio_init_all();
-    ap_mode();
+    sleep_ms(500);
+    Settings settings;
+    sleep_ms(100);
+    printf("settings are %d, %d, %d, %d, %d\n", settings.get_max_bright(), settings.get_mode(), settings.get_sensitivity(), settings.get_volume_threshold(), settings.get_config_temp_value());
+
+    ap_mode(settings);
     return 0;
 }
