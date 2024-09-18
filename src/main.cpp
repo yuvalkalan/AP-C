@@ -1,6 +1,7 @@
 
 #include "pico/stdlib.h"
 #include "access_point/access_point.h"
+#include "DS3231/DS3231.h"
 
 void ap_mode(Settings &settings)
 {
@@ -68,11 +69,35 @@ void ap_mode(Settings &settings)
 int main()
 {
     stdio_init_all();
-    sleep_ms(500);
-    Settings settings;
-    sleep_ms(100);
-    printf("settings are %d, %d, %d, %d, %d\n", settings.get_max_bright(), settings.get_mode(), settings.get_sensitivity(), settings.get_volume_threshold(), settings.get_config_temp_value());
+    sleep_ms(2000);
+    // Settings settings;
+    // sleep_ms(100);
+    // printf("settings are %d, %d, %d, %d, %d\n", settings.get_max_bright(), settings.get_mode(), settings.get_sensitivity(), settings.get_volume_threshold(), settings.get_config_temp_value());
 
-    ap_mode(settings);
+    // ap_mode(settings);
+    int initStatus = initDS3231();
+    // struct tm str_bday;
+    // str_bday.tm_year = 2012 - 1900;
+    // str_bday.tm_mon = 3 - 1;
+    // str_bday.tm_mday = 1;
+    // str_bday.tm_hour = 1;
+    // str_bday.tm_min = 1;
+    // str_bday.tm_sec = 1;
+    // setDS3231Time(&str_bday);
+
+    if (initStatus)
+        printf("Error occurred during DS3231 initialization. %s\n", ds3231ErrorString(initStatus));
+    else
+        printf("DS3231 initialized.\n");
+    struct tm datetime;
+    while (1)
+    {
+        int status = readDS3231Time(&datetime);
+        if (status)
+            printf("Error reading time, %s\n", ds3231ErrorString(status));
+        else
+            printf("%s", asctime(&datetime));
+        sleep_ms(1000);
+    }
     return 0;
 }

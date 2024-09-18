@@ -24,6 +24,7 @@ add_executable(${PROJECT_NAME}
                 src/access_point/dnsserver/dnsserver.cpp
                 src/access_point/access_point.cpp
                 src/access_point/Settings/Settings.cpp
+                src/DS3231/DS3231.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -34,6 +35,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME}
                         pico_stdlib          # Standard Pico SDK libraries
                         hardware_gpio        # GPIO hardware support
+                        hardware_i2c
                         pico_cyw43_arch_lwip_threadsafe_background  # CYW43 Wi-Fi driver with lwIP
 )
 
