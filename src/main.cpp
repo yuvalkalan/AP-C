@@ -111,6 +111,8 @@ int main()
         else
             printf("%s", asctime(&datetime));
         settings.set_current_time(datetime);
+        settings.set_birthday_time(datetime);
+        settings.set_start_time(datetime);
         sleep_ms(1000);
     }
 }

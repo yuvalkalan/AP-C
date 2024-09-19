@@ -82,10 +82,6 @@ void Settings::set_current_time(const tm &timestamp)
 void Settings::set_start_time(const tm &timestamp)
 {
     m_start_time = timestamp;
-    char buffer[80];
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &m_start_time);
-    printf("Formatted date and time: %s\n", buffer);
-
     write();
 }
 void Settings::set_birthday_time(const tm &timestamp)
