@@ -8,7 +8,7 @@ void enable_usb(bool enable)
 void enable_usb(bool enable) {}
 #endif
 
-Settings::Settings() : m_mode(Mode::SOUND_BAR), m_max_bright(DEF_MAX_BRIGHT), m_sensitivity(DEF_SENSITIVITY), m_volume_threshold(DEF_VOLUME_THRESHOLD), m_config_temp_value(0), m_machine_volume(100)
+Settings::Settings() : m_current_time(), m_start_time(), m_birthday_time()
 {
     if (exist())
     {
@@ -22,45 +22,33 @@ Settings::Settings() : m_mode(Mode::SOUND_BAR), m_max_bright(DEF_MAX_BRIGHT), m_
 }
 void Settings::read()
 {
-    m_max_bright = settings_flash_buffer[SETTINGS_MAX_BRIGHT_OFFSET];
-    m_sensitivity = settings_flash_buffer[SETTINGS_SENSITIVITY_OFFSET];
-    m_volume_threshold = settings_flash_buffer[SETTINGS_VOLUME_THRESHOLD_OFFSET];
+    memcpy(&m_current_time, settings_flash_buffer + SETTINGS_CURRENT_TIME_OFFSET, sizeof(m_current_time));
+    memcpy(&m_start_time, settings_flash_buffer + SETTINGS_START_TIME_OFFSET, sizeof(m_start_time));
+    memcpy(&m_birthday_time, settings_flash_buffer + SETTINGS_BIRTHDAY_TIME_OFFSET, sizeof(m_birthday_time));
 }
 void Settings::write()
 {
+    // create page --------------------
     uint8_t data[FLASH_PAGE_SIZE];
     data[SETTINGS_EXIST_OFFSET] = 1;
-    data[SETTINGS_MAX_BRIGHT_OFFSET] = m_max_bright;
-    data[SETTINGS_SENSITIVITY_OFFSET] = m_sensitivity;
-    data[SETTINGS_VOLUME_THRESHOLD_OFFSET] = m_volume_threshold;
+    memcpy(data + SETTINGS_CURRENT_TIME_OFFSET, &m_current_time, sizeof(m_current_time));
+    memcpy(data + SETTINGS_START_TIME_OFFSET, &m_start_time, sizeof(m_start_time));
+    memcpy(data + SETTINGS_BIRTHDAY_TIME_OFFSET, &m_birthday_time, sizeof(m_birthday_time));
+    // --------------------------------
+    // copy page to flash -------------
     enable_usb(false);
     uint32_t ints = save_and_disable_interrupts();
     flash_range_erase(SETTINGS_WRITE_START, FLASH_SECTOR_SIZE);
     flash_range_program(SETTINGS_WRITE_START, data, FLASH_PAGE_SIZE);
     restore_interrupts(ints);
     enable_usb(true);
+    // --------------------------------
 }
 bool Settings::exist() const
 {
     return settings_flash_buffer[SETTINGS_EXIST_OFFSET] == 1;
 }
-Mode Settings::get_mode() const
-{
-    return m_mode;
-}
-void Settings::update_mode()
-{
-    m_mode = (Mode)(((int)m_mode + 1) % Mode::LENGTH);
-    if (m_mode == Mode::CONFIG_SENSITIVITY)
-        m_config_temp_value = m_sensitivity;
-    else if (m_mode == Mode::CONFIG_BRIGHTNESS)
-        m_config_temp_value = m_max_bright;
-    else if (m_mode == Mode::CONFIG_VOLUME_THRESH)
-        m_config_temp_value = m_volume_threshold;
-    else
-        m_config_temp_value = 0;
-    printf("new mode is %d\n", m_mode);
-}
+
 void Settings::reset()
 {
     printf("reset settings!\n");
@@ -69,53 +57,39 @@ void Settings::reset()
     flash_range_erase(SETTINGS_WRITE_START, FLASH_SECTOR_SIZE);
     restore_interrupts(ints);
     enable_usb(true);
-    m_max_bright = DEF_MAX_BRIGHT;
-    m_sensitivity = DEF_SENSITIVITY;
-    m_volume_threshold = DEF_VOLUME_THRESHOLD;
+    m_current_time = tm();
+    m_start_time = tm();
+    m_birthday_time = tm();
 }
-uint8_t Settings::get_config_temp_value() const
+tm Settings::get_current_time() const
 {
-    return m_config_temp_value;
+    return m_current_time;
 }
-int Settings::get_volume_threshold() const
+tm Settings::get_start_time() const
 {
-    // return volume threshold between 0 and MAX_VOLUME_THRESHOLD
-    // return m_volume_threshold / 100.0f * MAX_VOLUME_THRESHOLD;
+    return m_start_time;
+}
+tm Settings::get_birthday_time() const
+{
+    return m_birthday_time;
+}
 
-    // TODO: fix to machine volume
-    return (m_volume_threshold / 100.0f) * MAX_VOLUME_THRESHOLD * std::pow((m_machine_volume / 100.0f), 2); // use the current machine volume. don't know why power 2 but it works (tested)
-}
-int Settings::get_max_bright() const
+void Settings::set_current_time(const tm &timestamp)
 {
-    // return brightness between 0 and MAX_BRIGHTNESS
-    return (m_max_bright / 100.0f) * MAX_BRIGHTNESS;
-}
-int Settings::get_sensitivity() const
-{
-    // return sensitivity between 0 and MAX_SENSITIVITY
-    // return m_sensitivity / 100.0f * MAX_SENSITIVITY;
-    return (m_sensitivity / 100.0f) * MAX_SENSITIVITY * 100.0f / (m_machine_volume + 0.01); // use the current machine volume
-}
-void Settings::set_config_temp_value(int value)
-{
-    m_config_temp_value = fix_percent(value);
-}
-void Settings::set_volume_threshold(int value)
-{
-    m_volume_threshold = fix_percent(value);
+    m_current_time = timestamp;
     write();
 }
-void Settings::set_max_bright(int value)
+void Settings::set_start_time(const tm &timestamp)
 {
-    m_max_bright = fix_percent(value);
+    m_start_time = timestamp;
+    char buffer[80];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &m_start_time);
+    printf("Formatted date and time: %s\n", buffer);
+
     write();
 }
-void Settings::set_sensitivity(int value)
+void Settings::set_birthday_time(const tm &timestamp)
 {
-    m_sensitivity = fix_percent(value);
+    m_birthday_time = timestamp;
     write();
-}
-void Settings::set_machine_volume(int value)
-{
-    m_machine_volume = value;
 }

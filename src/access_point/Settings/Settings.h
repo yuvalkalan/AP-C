@@ -5,14 +5,11 @@
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 #include <cmath>
+#include <time.h>
+#include <string.h>
 // settings flash buffer location
 #define SETTINGS_WRITE_START (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE)
 #define SETTINGS_READ_START (SETTINGS_WRITE_START + XIP_BASE)
-// ---------------------------------------------------------------------------
-// max settings configuration
-#define MAX_SENSITIVITY 100
-#define MAX_BRIGHTNESS 255
-#define MAX_VOLUME_THRESHOLD 65535
 // ---------------------------------------------------------------------------
 // default settings configuration (percents from max)
 #define DEF_MAX_BRIGHT 20
@@ -20,26 +17,13 @@
 #define DEF_VOLUME_THRESHOLD 12
 // ---------------------------------------------------------------------------
 // settings file contant offsets
-#define SETTINGS_EXIST_OFFSET 0
-#define SETTINGS_MAX_BRIGHT_OFFSET 1
-#define SETTINGS_SENSITIVITY_OFFSET 2
-#define SETTINGS_VOLUME_THRESHOLD_OFFSET 3
+#define SETTINGS_EXIST_OFFSET 0                                                 // 1 byte
+#define SETTINGS_CURRENT_TIME_OFFSET (SETTINGS_EXIST_OFFSET + sizeof(tm))       // sizeof(tm) bytes
+#define SETTINGS_START_TIME_OFFSET (SETTINGS_CURRENT_TIME_OFFSET + sizeof(tm))  // sizeof(tm) bytes
+#define SETTINGS_BIRTHDAY_TIME_OFFSET (SETTINGS_START_TIME_OFFSET + sizeof(tm)) // sizeof(tm) bytes
 // ---------------------------------------------------------------------------
 static const uint8_t *settings_flash_buffer = (const uint8_t *)SETTINGS_READ_START;
 void enable_usb(bool enable);
-enum Mode
-{
-    SOUND_BAR,
-    SOUND_ROUTE,
-    RANDOM_COLOR,
-    CONFIG_BRIGHTNESS,
-    CONFIG_SENSITIVITY,
-    CONFIG_VOLUME_THRESH,
-    OFF,
-
-    LENGTH // always set this item to be last!
-};
-
 uint8_t inline fix_percent(int value)
 {
     if (value < 0)
@@ -52,33 +36,26 @@ uint8_t inline fix_percent(int value)
 class Settings
 {
 private:
-    Mode m_mode;
-    uint8_t m_max_bright;
-    uint8_t m_sensitivity;
-    uint8_t m_volume_threshold;
-    uint8_t m_config_temp_value;
-    uint8_t m_machine_volume;
+    tm m_current_time;
+    tm m_start_time;
+    tm m_birthday_time;
 
 private:
     // file operation
-    void read();
+    void
+    read();
     void write();
     bool exist() const;
 
 public:
     Settings();
     // getters
-    Mode get_mode() const;
-    uint8_t get_config_temp_value() const;
-    int get_volume_threshold() const;
-    int get_max_bright() const;
-    int get_sensitivity() const;
+    tm get_current_time() const;
+    tm get_start_time() const;
+    tm get_birthday_time() const;
     // setters
+    void set_current_time(const tm &timestamp);
+    void set_start_time(const tm &timestamp);
+    void set_birthday_time(const tm &timestamp);
     void reset();
-    void update_mode();
-    void set_config_temp_value(int value);
-    void set_volume_threshold(int value);
-    void set_max_bright(int value);
-    void set_sensitivity(int value);
-    void set_machine_volume(int value);
 };

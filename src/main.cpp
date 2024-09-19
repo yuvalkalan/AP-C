@@ -65,25 +65,38 @@ void ap_mode(Settings &settings)
     cyw43_arch_deinit();
     delete state;
 }
-
+std::string tmToString(const tm &timeinfo)
+{
+    char buffer[80];
+    // Format the time as desired, e.g., "YYYY-MM-DD HH:MM:SS"
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    return std::string(buffer);
+}
 int main()
 {
     stdio_init_all();
     sleep_ms(2000);
-    // Settings settings;
-    // sleep_ms(100);
-    // printf("settings are %d, %d, %d, %d, %d\n", settings.get_max_bright(), settings.get_mode(), settings.get_sensitivity(), settings.get_volume_threshold(), settings.get_config_temp_value());
-
+    Settings settings;
+    sleep_ms(100);
+    // settings.reset();
+    settings.get_current_time();
+    auto a = settings.get_current_time();
+    auto b = settings.get_start_time();
+    auto c = settings.get_birthday_time();
+    printf("settings:\n\t%s\n\t%s\n\t%s\n",
+           tmToString(a).c_str(),
+           tmToString(b).c_str(),
+           tmToString(c).c_str());
     // ap_mode(settings);
     int initStatus = initDS3231();
-    // struct tm str_bday;
-    // str_bday.tm_year = 2012 - 1900;
-    // str_bday.tm_mon = 3 - 1;
-    // str_bday.tm_mday = 1;
-    // str_bday.tm_hour = 1;
-    // str_bday.tm_min = 1;
-    // str_bday.tm_sec = 1;
-    // setDS3231Time(&str_bday);
+    struct tm str_bday;
+    str_bday.tm_year = 2024 - 1900;
+    str_bday.tm_mon = 9 - 1;
+    str_bday.tm_mday = 19;
+    str_bday.tm_hour = 16;
+    str_bday.tm_min = 35;
+    str_bday.tm_sec = 0;
+    setDS3231Time(&str_bday);
 
     if (initStatus)
         printf("Error occurred during DS3231 initialization. %s\n", ds3231ErrorString(initStatus));
@@ -97,7 +110,7 @@ int main()
             printf("Error reading time, %s\n", ds3231ErrorString(status));
         else
             printf("%s", asctime(&datetime));
+        settings.set_current_time(datetime);
         sleep_ms(1000);
     }
-    return 0;
 }
