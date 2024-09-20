@@ -45,11 +45,11 @@ private:
     void
     read();
     void write();
-    bool exist() const;
 
 public:
     Settings();
     // getters
+    bool exist() const;
     tm get_current_time() const;
     tm get_start_time() const;
     tm get_birthday_time() const;
