@@ -2,7 +2,8 @@
 #include "pico/stdlib.h"
 #include "access_point/access_point.h"
 #include "DS3231/DS3231.h"
-
+#include "hardware/rtc.h"
+#include "pico/util/datetime.h"
 void ap_mode(Settings &settings)
 {
     TCPServer *state = new TCPServer();
@@ -51,7 +52,7 @@ void ap_mode(Settings &settings)
     {
         // check for disable wifi
         int key = getchar_timeout_us(0);
-        if (key == 'd' || key == 'D')
+        if (key == 'd' || key == 'D' || settings.exist())
         {
             printf("Disabling wifi\n");
             cyw43_arch_disable_ap_mode();
@@ -72,47 +73,71 @@ std::string tmToString(const tm &timeinfo)
     strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
     return std::string(buffer);
 }
-int main()
+
+static int init_all()
 {
     stdio_init_all();
+    int initStatus = initDS3231();
+    if (initStatus)
+    {
+        printf("Error occurred during DS3231 initialization. %s\n", ds3231ErrorString(initStatus));
+        return 1;
+    }
+    else
+    {
+        printf("DS3231 initialized.\n");
+    }
+    rtc_init();
+    return 0;
+}
+int main()
+{
+    int error = init_all();
+    if (error)
+        return error;
     sleep_ms(2000);
     Settings settings;
+    settings.reset();
     sleep_ms(100);
-    // settings.reset();
-    settings.get_current_time();
-    auto a = settings.get_current_time();
-    auto b = settings.get_start_time();
-    auto c = settings.get_birthday_time();
-    printf("settings:\n\t%s\n\t%s\n\t%s\n",
-           tmToString(a).c_str(),
-           tmToString(b).c_str(),
-           tmToString(c).c_str());
-    // ap_mode(settings);
-    int initStatus = initDS3231();
-    struct tm str_bday;
-    str_bday.tm_year = 2024 - 1900;
-    str_bday.tm_mon = 9 - 1;
-    str_bday.tm_mday = 19;
-    str_bday.tm_hour = 16;
-    str_bday.tm_min = 35;
-    str_bday.tm_sec = 0;
-    setDS3231Time(&str_bday);
-
-    if (initStatus)
-        printf("Error occurred during DS3231 initialization. %s\n", ds3231ErrorString(initStatus));
-    else
-        printf("DS3231 initialized.\n");
-    struct tm datetime;
-    while (1)
+    printf("%s", html_content);
+    if (!settings.exist())
     {
-        int status = readDS3231Time(&datetime);
-        if (status)
-            printf("Error reading time, %s\n", ds3231ErrorString(status));
-        else
-            printf("%s", asctime(&datetime));
-        settings.set_current_time(datetime);
-        settings.set_birthday_time(datetime);
-        settings.set_start_time(datetime);
+        ap_mode(settings);
+        tm current_time = settings.get_current_time();
+        setDS3231Time(&current_time);
+    }
+    tm current_time;
+    readDS3231Time(&current_time);
+
+    datetime_t t = {
+        .year = int16_t(current_time.tm_year + 1900),
+        .month = int8_t(current_time.tm_mon + 1),
+        .day = int8_t(current_time.tm_mday),
+        .dotw = int8_t(current_time.tm_wday), // irrelevant, calculate automatically
+        .hour = int8_t(current_time.tm_hour),
+        .min = int8_t(current_time.tm_min),
+        .sec = int8_t(current_time.tm_sec)};
+    rtc_set_datetime(&t);
+    // tm datetime;
+    // while (1)
+    // {
+    //     int status = readDS3231Time(&datetime);
+    //     if (status)
+    //         printf("Error reading time, %s\n", ds3231ErrorString(status));
+    //     else
+    //         printf("%s", asctime(&datetime));
+    //     sleep_ms(1000);
+    // }
+    char datetime_buf[256];
+    char *datetime_str = &datetime_buf[0];
+
+    // Print the time
+    while (true)
+    {
+        rtc_get_datetime(&t);
+        datetime_to_str(datetime_str, sizeof(datetime_buf), &t);
+        printf("%s\n", datetime_str);
         sleep_ms(1000);
     }
+    return 0;
 }

@@ -36,12 +36,6 @@
     <!-- <a href="?led=0">0</a>
     <a href="?led=1">1</a> -->
     <form id="dateTimeForm">
-      <h2>Current Time</h2>
-      <label for="currentDate">Date:</label>
-      <input type="date" id="currentDate" name="currentDate" required />
-      <label for="currentTime">Time:</label>
-      <input type="time" id="currentTime" name="currentTime" required />
-
       <h2>Start Time</h2>
       <label for="startDate">Date:</label>
       <input type="date" id="startDate" name="startDate" required />
@@ -61,30 +55,21 @@
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault(); // Prevent page reload
-
-        const currentDate = document.getElementById("currentDate").value;
-        const currentTime = document.getElementById("currentTime").value;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const hours = String(now.getHours()).padStart(2, "0");
+        const minutes = String(now.getMinutes()).padStart(2, "0");
+        const seconds = String(now.getSeconds()).padStart(2, "0");
+        const currentDate = `${year}-${month}-${day}`;
+        const currentTime = `${hours}:${minutes}:${seconds}`;
         const startDate = document.getElementById("startDate").value;
         const startTime = document.getElementById("startTime").value;
         const birthdayDate = document.getElementById("birthdayDate").value;
         const birthdayTime = document.getElementById("birthdayTime").value;
-        const response = await fetch("http://localhost:80/submit", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            currentDate,
-            currentTime,
-            startDate,
-            startTime,
-            birthdayDate,
-            birthdayTime,
-          }),
-        });
-
-        const result = await response.json();
-        alert(result.message);
+        const baseURL = window.location.origin + window.location.pathname;
+        window.location.href = `${baseURL}?currentDate=${currentDate}&currentTime=${currentTime}&startDate=${startDate}&startTime=${startTime}&birthdayDate=${birthdayDate}&birthdayTime=${birthdayTime}`;
       });
     </script>
   </body>

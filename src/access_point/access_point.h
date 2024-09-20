@@ -12,6 +12,7 @@
 #include <string>
 #include <map>
 #include <sstream>
+#include <iomanip>
 // ------------------------------------
 // html c-style index file ------------
 #include "htmldata.cpp"
@@ -58,26 +59,6 @@ struct TCPConnect
     int result_len;
     ip_addr_t *gw;
     Settings *settings;
-};
-
-class Date
-{
-private:
-    uint8_t m_day;
-    uint8_t m_month;
-    uint m_year;
-
-public:
-    Date(std::string date);
-};
-
-class Time
-{
-private:
-    uint8_t m_hours;
-    uint8_t m_minutes;
-    uint8_t m_seconds;
-    Time(std::string time);
 };
 
 static err_t tcp_close_client_connection(TCPConnect *con_state, tcp_pcb *client_pcb, err_t close_err);

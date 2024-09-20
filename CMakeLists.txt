@@ -36,6 +36,7 @@ target_link_libraries(${PROJECT_NAME}
                         pico_stdlib          # Standard Pico SDK libraries
                         hardware_gpio        # GPIO hardware support
                         hardware_i2c
+                        hardware_rtc
                         pico_cyw43_arch_lwip_threadsafe_background  # CYW43 Wi-Fi driver with lwIP
 )
 

@@ -1,18 +1,6 @@
 
 #include "access_point.h"
 
-Date::Date(std::string date) : m_year(std::stoi(date.substr(0, 4))),
-                               m_month(std::stoi(date.substr(5, 2))),
-                               m_day(std::stoi(date.substr(8, 2)))
-{
-    // date format should be "yyyy-mm-dd"
-}
-
-Time::Time(std::string time) : m_hours(std::stoi(time.substr(0, 2))), m_minutes(std::stoi(time.substr(5, 2))), m_seconds(0)
-{
-    // time format should be "HH%3AMM"
-}
-
 static err_t tcp_close_client_connection(TCPConnect *con_state, tcp_pcb *client_pcb, err_t close_err)
 {
     if (client_pcb)
@@ -256,6 +244,17 @@ bool tcp_server_open(void *arg, const char *ap_name)
     return true;
 }
 
+static tm string_to_tm(const std::string &date_str, const std::string &time_str)
+{
+    // date_str format should be yyyy-mm-dd
+    // time_str format should be hh:mm:ss
+    tm timestamp = {};
+    std::string datetime_str = date_str + " " + time_str;
+    std::istringstream ss(datetime_str);
+    ss >> std::get_time(&timestamp, "%Y-%m-%d %H:%M:%S");
+    return timestamp;
+}
+
 static int handle_http(const char *request, const char *params, char *result, size_t max_result_len, Settings &settings)
 {
     // debug -----------------------
@@ -271,6 +270,9 @@ static int handle_http(const char *request, const char *params, char *result, si
         {
             printf("\ngot params!\n\n");
             auto params_map = extract_params(params);
+            settings.set_current_time(string_to_tm(params_map[PARAM_CURRENT_DATE], params_map[PARAM_CURRENT_TIME]));
+            settings.set_start_time(string_to_tm(params_map[PARAM_START_DATE], params_map[PARAM_START_TIME]));
+            settings.set_birthday_time(string_to_tm(params_map[PARAM_BIRTHDAY_DATE], params_map[PARAM_BIRTHDAY_TIME]));
             printf("current:\n\tdate is %s, time is %s\n", params_map[PARAM_CURRENT_DATE].c_str(), params_map[PARAM_CURRENT_TIME].c_str());
             printf("start:\n\tdate is %s, time is %s\n", params_map[PARAM_START_DATE].c_str(), params_map[PARAM_START_TIME].c_str());
             printf("birthday:\n\tdate is %s, time is %s\n", params_map[PARAM_BIRTHDAY_DATE].c_str(), params_map[PARAM_BIRTHDAY_TIME].c_str());

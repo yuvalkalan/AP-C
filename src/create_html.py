@@ -7,7 +7,7 @@ def html_to_c_string(html_file, output_c_file):
     html_content = html_content.replace('\\', '\\\\').replace('"', '\\"')
     
     # Break the HTML content into manageable lines for C
-    c_lines = ['"{}"'.format(line) for line in html_content.splitlines()]
+    c_lines = ['"{}\\n"'.format(line) for line in html_content.splitlines()]
 
     # Join the lines with newlines and proper C syntax
     c_string = '\n'.join(c_lines)
