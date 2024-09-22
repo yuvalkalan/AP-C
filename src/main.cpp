@@ -1,9 +1,18 @@
-
 #include "pico/stdlib.h"
 #include "access_point/access_point.h"
 #include "DS3231/DS3231.h"
 #include "hardware/rtc.h"
 #include "pico/util/datetime.h"
+#include "hardware/spi.h"
+#include "ST7735/ST7735.h"
+
+// display pins
+#define ST7735_PIN_CS 13   // Chip Select
+#define ST7735_PIN_DC 9    // Data/Command
+#define ST7735_PIN_RST 8   // Reset
+#define ST7735_PIN_SCK 10  // SPI Clock
+#define ST7735_PIN_MOSI 11 // SPI MOSI (Master Out Slave In)
+
 void ap_mode(Settings &settings)
 {
     TCPServer *state = new TCPServer();
@@ -70,7 +79,7 @@ std::string tmToString(const tm &timeinfo)
 {
     char buffer[80];
     // Format the time as desired, e.g., "YYYY-MM-DD HH:MM:SS"
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d\n%H:%M:%S", &timeinfo);
     return std::string(buffer);
 }
 
@@ -90,18 +99,24 @@ static int init_all()
     rtc_init();
     return 0;
 }
+
 int main()
 {
     int error = init_all();
     if (error)
         return error;
     sleep_ms(2000);
+
     Settings settings;
-    settings.reset();
-    sleep_ms(100);
-    printf("%s", html_content);
+    // settings.reset(); // TODO: remove this line
+
+    ST7735 display(ST7735_SPI_PORT, ST7735_SPI_BAUDRATE, ST7735_PIN_SCK, ST7735_PIN_MOSI, ST7735_PIN_CS, ST7735_PIN_DC, ST7735_PIN_RST);
+    display.init_red();
+    display.fill_screen(ST7735_BLACK);
+
     if (!settings.exist())
     {
+        // printf("%s", html_content);
         ap_mode(settings);
         tm current_time = settings.get_current_time();
         setDS3231Time(&current_time);
@@ -118,26 +133,23 @@ int main()
         .min = int8_t(current_time.tm_min),
         .sec = int8_t(current_time.tm_sec)};
     rtc_set_datetime(&t);
-    // tm datetime;
-    // while (1)
-    // {
-    //     int status = readDS3231Time(&datetime);
-    //     if (status)
-    //         printf("Error reading time, %s\n", ds3231ErrorString(status));
-    //     else
-    //         printf("%s", asctime(&datetime));
-    //     sleep_ms(1000);
-    // }
-    char datetime_buf[256];
-    char *datetime_str = &datetime_buf[0];
-
+    sleep_ms(10); // wait some time for rtc to reset
     // Print the time
     while (true)
     {
         rtc_get_datetime(&t);
-        datetime_to_str(datetime_str, sizeof(datetime_buf), &t);
-        printf("%s\n", datetime_str);
-        sleep_ms(1000);
+        tm time;
+        time.tm_year = t.year - 1900;
+        time.tm_mon = t.month - 1;
+        time.tm_mday = t.day;
+        time.tm_wday = t.dotw;
+        time.tm_hour = t.hour;
+        time.tm_min = t.min;
+        time.tm_sec = t.sec;
+
+        // display.fill_screen(ST7735_BLACK);
+        display.draw_text(5, 5, tmToString(time).c_str(), ST7735_WHITE, 2);
+        sleep_ms(100);
     }
     return 0;
 }
