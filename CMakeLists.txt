@@ -25,6 +25,7 @@ add_executable(${PROJECT_NAME}
                 src/access_point/access_point.cpp
                 src/access_point/Settings/Settings.cpp
                 src/DS3231/DS3231.cpp
+                src/ST7735/ST7735.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -33,10 +34,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 
 target_link_libraries(${PROJECT_NAME}
-                        pico_stdlib          # Standard Pico SDK libraries
-                        hardware_gpio        # GPIO hardware support
-                        hardware_i2c
-                        hardware_rtc
+                        pico_stdlib                                 # Standard Pico SDK libraries
+                        hardware_gpio                               # GPIO hardware support
+                        hardware_i2c                                # pico i2c interface
+                        hardware_rtc                                # pico real time clock
+                        hardware_spi                                # pico spi interface
                         pico_cyw43_arch_lwip_threadsafe_background  # CYW43 Wi-Fi driver with lwIP
 )
 
