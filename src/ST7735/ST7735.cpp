@@ -208,23 +208,18 @@ void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t sca
 
     const uint8_t *bitmap = font5x7[c - 32]; // Get font bitmap for character
 
-    for (int i = 0; i < 5; i++)
-    { // 5 columns per character
+    for (int i = 0; i < 5; i++) // 5 columns per character
+    {
         uint8_t line = bitmap[i];
-        for (int j = 0; j < 7; j++)
-        { // 7 rows per column
-            // Draw scaled pixel
-            for (uint8_t sx = 0; sx < scale; sx++)
+        for (int j = 0; j < 7; j++) // 7 rows per column
+        {
+            for (uint8_t sx = 0; sx < scale; sx++) // Draw scaled pixel
             {
                 for (uint8_t sy = 0; sy < scale; sy++)
                 {
-                    if (line & 0x1)
-                        draw_pixel(x + (i * scale) + sx, y + (j * scale) + sy, color);
-                    else
-                        draw_pixel(x + (i * scale) + sx, y + (j * scale) + sy, ST7735_BLUE);
+                    draw_pixel(x + (i * scale) + sx, y + (j * scale) + sy, line & 0x1 ? color : ST7735_BLACK);
                 }
             }
-
             line >>= 1; // Shift the line to get the next bit
         }
     }
