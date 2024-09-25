@@ -26,7 +26,7 @@ ST7735::ST7735(spi_inst_t *spi, uint baudrate, uint sck_pin, uint mosi_pin, uint
 }
 
 // Low-level function to send commands
-void ST7735::write_command(uint8_t cmd)
+void ST7735::write_command(uint8_t cmd) const
 {
     gpio_put(m_dc_pin, 0); // DC low for command
     gpio_put(m_cs_pin, 0); // CS low
@@ -35,7 +35,7 @@ void ST7735::write_command(uint8_t cmd)
 }
 
 // Low-level function to send data
-void ST7735::write_data(uint8_t data)
+void ST7735::write_data(uint8_t data) const
 {
     gpio_put(m_dc_pin, 1); // DC high for data
     gpio_put(m_cs_pin, 0); // CS low
@@ -44,7 +44,7 @@ void ST7735::write_data(uint8_t data)
 }
 
 // Write multiple data bytes (useful for bulk transfers like pixel data)
-void ST7735::write_data_buffer(const uint8_t *buffer, size_t size)
+void ST7735::write_data_buffer(const uint8_t *buffer, size_t size) const
 {
     gpio_put(m_dc_pin, 1); // DC high for data
     gpio_put(m_cs_pin, 0); // CS low
@@ -53,7 +53,7 @@ void ST7735::write_data_buffer(const uint8_t *buffer, size_t size)
 }
 
 // Set the address window for pixel updates
-void ST7735::set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
+void ST7735::set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) const
 {
     // Column address set
     write_command(ST7735_CMD_CASET);
@@ -74,7 +74,7 @@ void ST7735::set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
 }
 
 // Draw a pixel at (x, y) with a given color
-void ST7735::draw_pixel(uint8_t x, uint8_t y, uint16_t color)
+void ST7735::draw_pixel(uint8_t x, uint8_t y, uint16_t color) const
 {
     if (x >= ST7735_WIDTH || y >= ST7735_HEIGHT)
         return; // Bounds check
@@ -84,7 +84,7 @@ void ST7735::draw_pixel(uint8_t x, uint8_t y, uint16_t color)
 }
 
 // Fill the entire screen with a color
-void ST7735::fill_screen(uint16_t color)
+void ST7735::fill_screen(uint16_t color) const
 {
     set_addr_window(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
     uint8_t color_data[] = {(uint8_t)(color >> 8), (uint8_t)(color & 0x00FF)}; // Split color into 2 bytes (RGB565)
@@ -94,7 +94,7 @@ void ST7735::fill_screen(uint16_t color)
     }
 }
 
-void ST7735::reset()
+void ST7735::reset() const
 {
     // Reset the device
     gpio_put(m_dc_pin, 0);
@@ -106,7 +106,7 @@ void ST7735::reset()
     sleep_us(500);
 }
 
-void ST7735::init_red()
+void ST7735::init_red() const
 {
     // Initialize a red tab version
     reset();
@@ -200,7 +200,7 @@ void ST7735::init_red()
     gpio_put(m_cs_pin, 1);
 }
 
-void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale)
+void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale) const
 {
     // draw char without backgound color
     if (c < 32 || c > sizeof(font5x7) / sizeof(font5x7[0]) - 1 + 32)
@@ -225,7 +225,7 @@ void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t sca
     }
 }
 
-void ST7735::draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint8_t scale)
+void ST7735::draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint8_t scale) const
 {
     int counter = 0;
     uint16_t ori_x = x;

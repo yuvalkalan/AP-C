@@ -48,7 +48,7 @@
 
 // SPI settings
 #define ST7735_SPI_PORT spi1
-#define ST7735_SPI_BAUDRATE 20000000 // 20 MHz is often the max supported by the ST7735
+#define ST7735_SPI_BAUDRATE 32000000 // 32 MHz
 
 // Color definitions (RGB565 format)
 #define ST7735_BLACK 0x0000
@@ -175,19 +175,19 @@ private:
     uint m_rst_pin;
 
 private:
-    void write_command(uint8_t cmd);
-    void write_data(uint8_t data);
-    void write_data_buffer(const uint8_t *buffer, size_t size);
-    void set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1);
-    void reset();
+    void write_command(uint8_t cmd) const;
+    void write_data(uint8_t data) const;
+    void write_data_buffer(const uint8_t *buffer, size_t size) const;
+    void set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) const;
+    void reset() const;
 
 public:
     ST7735(spi_inst_t *spi, uint baudrate, uint sck_pin, uint mosi_pin, uint cs_pin, uint dc_pin, uint rst_pin);
-    void init_red();
-    void draw_pixel(uint8_t x, uint8_t y, uint16_t color);
-    void fill_screen(uint16_t color);
+    void init_red() const;
+    void draw_pixel(uint8_t x, uint8_t y, uint16_t color) const;
+    void fill_screen(uint16_t color) const;
     // void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint16_t bg, uint8_t scale);
-    void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale);
+    void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale) const;
     // void draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint16_t bg, uint8_t scale);
-    void draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint8_t scale);
+    void draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint8_t scale) const;
 };
