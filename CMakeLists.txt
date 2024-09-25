@@ -27,6 +27,7 @@ add_executable(${PROJECT_NAME}
                 src/DS3231/DS3231.cpp
                 src/ST7735/ST7735.cpp
                 src/Button/Button.cpp
+                src/TimeMaster/TimeMaster.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
