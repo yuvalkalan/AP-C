@@ -225,10 +225,10 @@ void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t sca
     }
 }
 
-void ST7735::draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint8_t scale) const
+void ST7735::draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, uint8_t scale) const
 {
     int counter = 0;
-    uint16_t ori_x = x;
+    uint8_t ori_x = x;
     while (*text)
     {
         if (*text == '\n')
@@ -241,6 +241,31 @@ void ST7735::draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color,
         {
             draw_char(x, y, *text++, color, scale);
             x += 6 * scale; // Move x cursor, 5 pixels for the character + 1 pixel space
+        }
+    }
+}
+
+// Function to check if a point (x, y) lies inside a circle of radius r
+static bool inline is_inside_circle(int x, int y, int xc, int yc, int r)
+{
+    int dx = x - xc;
+    int dy = y - yc;
+    return (dx * dx + dy * dy) < (r * r); // Check using distance squared
+}
+
+void ST7735::draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width, uint16_t color) const
+{
+    int outer_radius = r + border_width; // Radius of the outer circle
+    // Iterate over the bounding box of the outer circle
+    for (int x = xc - outer_radius; x <= xc + outer_radius; ++x)
+    {
+        for (int y = yc - outer_radius; y <= yc + outer_radius; ++y)
+        {
+            // Check if the point is inside the outer circle but outside the inner circle
+            if (is_inside_circle(x, y, xc, yc, outer_radius) && !is_inside_circle(x, y, xc, yc, r))
+            {
+                draw_pixel(x, y, color); // Draw the pixel if it's in the border area
+            }
         }
     }
 }

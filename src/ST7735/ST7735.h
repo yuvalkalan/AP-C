@@ -189,5 +189,6 @@ public:
     // void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint16_t bg, uint8_t scale);
     void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale) const;
     // void draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint16_t bg, uint8_t scale);
-    void draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint8_t scale) const;
+    void draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, uint8_t scale) const;
+    void draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width, uint16_t color) const;
 };
