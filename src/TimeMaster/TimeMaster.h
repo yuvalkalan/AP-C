@@ -1,5 +1,6 @@
 #pragma once
-#include <tuple>
+#include <ctime>
+
 const int MONTHS_LEN[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 class Date
@@ -16,9 +17,10 @@ public:
     int get_month() const;
     int get_year() const;
     Date &operator+=(int other);
+    bool operator>(const Date &other);
     bool is_equal(const Date &date2) const;
     int month_delta() const;
     bool is_bigger(const Date &date2) const;
 };
 
-std::tuple<int, int, int, int, int, int, bool> calculate_time_dif(std::tuple<int, int, int, int, int, int> datetime1, std::tuple<int, int, int, int, int, int> datetime2);
+tm calculate_time_dif(const tm &datetime1, const tm &datetime2);

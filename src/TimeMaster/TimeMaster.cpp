@@ -42,6 +42,20 @@ Date &Date::operator+=(int other)
     }
     return *this;
 }
+bool Date::operator>(const Date &other)
+{
+    if (get_year() == other.get_year())
+    {
+        if (get_month() == other.get_month())
+        {
+            if (get_day() == other.get_day())
+                return false;
+            return get_day() > other.get_day();
+        }
+        return get_month() > other.get_month();
+    }
+    return get_year() > other.get_year();
+}
 bool Date::is_equal(const Date &date2) const
 {
     return get_year() == date2.get_year() && get_month() == date2.get_month() && get_day() == date2.get_day();
@@ -70,26 +84,19 @@ bool Date::is_bigger(const Date &date2) const
     return false;
 }
 
-std::tuple<int, int, int, int, int, int, bool> calculate_time_dif(std::tuple<int, int, int, int, int, int> datetime1, std::tuple<int, int, int, int, int, int> datetime2)
+tm calculate_time_dif(const tm &datetime1, const tm &datetime2)
 {
-    int year1 = std::get<0>(datetime1), month1 = std::get<1>(datetime1), day1 = std::get<2>(datetime1), hour1 = std::get<3>(datetime1), minute1 = std::get<4>(datetime1), second1 = std::get<5>(datetime1);
-    int year2 = std::get<0>(datetime2), month2 = std::get<1>(datetime2), day2 = std::get<2>(datetime2), hour2 = std::get<3>(datetime2), minute2 = std::get<4>(datetime2), second2 = std::get<5>(datetime2);
-
-    Date date1(year1, month1, day1);
-    Date date2(year2, month2, day2);
-
-    bool is_reverse = false;
-    if (date1.is_bigger(date2))
+    // should be datetime1 < datetime2
+    int year1 = datetime1.tm_year, month1 = datetime1.tm_mon, day1 = datetime1.tm_mday, hour1 = datetime1.tm_hour, minute1 = datetime1.tm_min, second1 = datetime1.tm_sec;
+    int year2 = datetime2.tm_year, month2 = datetime2.tm_mon, day2 = datetime2.tm_mday, hour2 = datetime2.tm_hour, minute2 = datetime2.tm_min, second2 = datetime2.tm_sec;
+    Date date1(year1 + 1900, month1 + 1, day1);
+    Date date2(year2 + 1900, month2 + 1, day2);
+    bool reverse = false;
+    if (date1 > date2)
     {
-        std::swap(year1, year2);
-        std::swap(month1, month2);
-        std::swap(day1, day2);
-        std::swap(hour1, hour2);
-        std::swap(minute1, minute2);
-        std::swap(second1, second2);
-        date1 = Date(year1, month1, day1);
-        date2 = Date(year2, month2, day2);
-        is_reverse = true;
+        date1 = Date(year2 + 1900, month2 + 1, day2);
+        date2 = Date(year1 + 1900, month1 + 1, day1);
+        reverse = true;
     }
 
     int counter = 0;
@@ -131,12 +138,25 @@ std::tuple<int, int, int, int, int, int, bool> calculate_time_dif(std::tuple<int
         years -= 1;
     }
 
-    if (is_reverse)
+    tm res;
+    if (reverse)
     {
-        return std::make_tuple(-years, -months, -days, -hours, -minutes, -seconds, is_reverse);
+        res.tm_year = -years - 1900;
+        res.tm_mon = -months - 1;
+        res.tm_mday = -days;
+        res.tm_hour = -hours;
+        res.tm_min = -minutes;
+        res.tm_sec = -seconds;
     }
     else
     {
-        return std::make_tuple(years, months, days, hours, minutes, seconds, is_reverse);
+
+        res.tm_year = years - 1900;
+        res.tm_mon = months - 1;
+        res.tm_mday = days;
+        res.tm_hour = hours;
+        res.tm_min = minutes;
+        res.tm_sec = seconds;
     }
+    return res;
 }
