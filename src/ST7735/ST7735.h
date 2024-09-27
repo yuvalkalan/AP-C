@@ -1,7 +1,7 @@
 #pragma once
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
-
+#include <cmath>
 // ST7735 command definitions
 #define ST7735_CMD_NOP 0x00
 #define ST7735_CMD_SWRESET 0x01
@@ -173,22 +173,26 @@ private:
     uint m_cs_pin;
     uint m_dc_pin;
     uint m_rst_pin;
+    uint16_t m_buffer[ST7735_WIDTH][ST7735_HEIGHT];
 
 private:
     void write_command(uint8_t cmd) const;
     void write_data(uint8_t data) const;
     void write_data_buffer(const uint8_t *buffer, size_t size) const;
     void set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) const;
-    void reset() const;
+    void reset();
 
 public:
     ST7735(spi_inst_t *spi, uint baudrate, uint sck_pin, uint mosi_pin, uint cs_pin, uint dc_pin, uint rst_pin);
-    void init_red() const;
-    void draw_pixel(uint8_t x, uint8_t y, uint16_t color) const;
-    void fill_screen(uint16_t color) const;
+    void init_red();
+    void update();
+    void draw_pixel(uint8_t x, uint8_t y, uint16_t color);
+    void fill(uint16_t color);
     // void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint16_t bg, uint8_t scale);
-    void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale) const;
+    void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale);
     // void draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint16_t bg, uint8_t scale);
-    void draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, uint8_t scale) const;
-    void draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width, uint16_t color) const;
+    void draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, uint8_t scale);
+    void draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width, uint16_t color);
+    void draw_line(uint8_t s_x, uint8_t s_y, uint8_t e_x, uint8_t e_y, uint8_t border_width, uint16_t color);
+    void draw_line_with_angle(uint8_t s_x, uint8_t s_y, float length, float angle_deg, uint8_t border_width, uint16_t color);
 };

@@ -33,7 +33,6 @@ void ST7735::write_command(uint8_t cmd) const
     spi_write_blocking(m_spi, &cmd, 1);
     gpio_put(m_cs_pin, 1); // CS high
 }
-
 // Low-level function to send data
 void ST7735::write_data(uint8_t data) const
 {
@@ -42,7 +41,6 @@ void ST7735::write_data(uint8_t data) const
     spi_write_blocking(m_spi, &data, 1);
     gpio_put(m_cs_pin, 1); // CS high
 }
-
 // Write multiple data bytes (useful for bulk transfers like pixel data)
 void ST7735::write_data_buffer(const uint8_t *buffer, size_t size) const
 {
@@ -51,7 +49,6 @@ void ST7735::write_data_buffer(const uint8_t *buffer, size_t size) const
     spi_write_blocking(m_spi, buffer, size);
     gpio_put(m_cs_pin, 1); // CS high
 }
-
 // Set the address window for pixel updates
 void ST7735::set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) const
 {
@@ -73,28 +70,44 @@ void ST7735::set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) con
     write_command(ST7735_CMD_RAMWR);
 }
 
-// Draw a pixel at (x, y) with a given color
-void ST7735::draw_pixel(uint8_t x, uint8_t y, uint16_t color) const
+void ST7735::update()
 {
-    if (x >= ST7735_WIDTH || y >= ST7735_HEIGHT)
-        return; // Bounds check
-    set_addr_window(x, y, x, y);
-    uint8_t color_data[] = {(uint8_t)(color >> 8), (uint8_t)(color & 0x00FF)}; // Split color into 2 bytes (RGB565)
-    write_data_buffer(color_data, sizeof(color_data));
-}
+    // TODO: fix to be more efficient!
+    // should be like:
+    // set_addr_window(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
+    // write_data_buffer((uint8_t *)m_buffer, sizeof(m_buffer) * sizeof(m_buffer[0]));
 
-// Fill the entire screen with a color
-void ST7735::fill_screen(uint16_t color) const
-{
-    set_addr_window(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
-    uint8_t color_data[] = {(uint8_t)(color >> 8), (uint8_t)(color & 0x00FF)}; // Split color into 2 bytes (RGB565)
-    for (uint32_t i = 0; i < ST7735_WIDTH * ST7735_HEIGHT; i++)
+    for (int x = 0; x < ST7735_WIDTH; x++)
     {
-        write_data_buffer(color_data, sizeof(color_data));
+        for (int y = 0; y < ST7735_HEIGHT; y++)
+        {
+            set_addr_window(x, y, x, y);
+            uint8_t color_data[] = {(uint8_t)(m_buffer[x][y] >> 8), (uint8_t)(m_buffer[x][y] & 0x00FF)}; // Split color into 2 bytes (RGB565)
+            write_data_buffer(color_data, sizeof(color_data));
+        }
     }
 }
 
-void ST7735::reset() const
+// Draw a pixel at (x, y) with a given color
+void ST7735::draw_pixel(uint8_t x, uint8_t y, uint16_t color)
+{
+    if (x >= ST7735_WIDTH || y >= ST7735_HEIGHT)
+        return; // Bounds check
+    m_buffer[x][y] = color;
+}
+// Fill the entire screen with a color
+void ST7735::fill(uint16_t color)
+{
+    for (int x = 0; x < ST7735_WIDTH; x++)
+    {
+        for (int y = 0; y < ST7735_HEIGHT; y++)
+        {
+            m_buffer[x][y] = ST7735_BLACK;
+        }
+    }
+}
+
+void ST7735::reset()
 {
     // Reset the device
     gpio_put(m_dc_pin, 0);
@@ -106,7 +119,7 @@ void ST7735::reset() const
     sleep_us(500);
 }
 
-void ST7735::init_red() const
+void ST7735::init_red()
 {
     // Initialize a red tab version
     reset();
@@ -200,7 +213,7 @@ void ST7735::init_red() const
     gpio_put(m_cs_pin, 1);
 }
 
-void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale) const
+void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale)
 {
     // draw char without backgound color
     if (c < 32 || c > sizeof(font5x7) / sizeof(font5x7[0]) - 1 + 32)
@@ -225,7 +238,7 @@ void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t sca
     }
 }
 
-void ST7735::draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, uint8_t scale) const
+void ST7735::draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, uint8_t scale)
 {
     int counter = 0;
     uint8_t ori_x = x;
@@ -253,7 +266,7 @@ static bool inline is_inside_circle(int x, int y, int xc, int yc, int r)
     return (dx * dx + dy * dy) < (r * r); // Check using distance squared
 }
 
-void ST7735::draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width, uint16_t color) const
+void ST7735::draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width, uint16_t color)
 {
     int outer_radius = r + border_width; // Radius of the outer circle
     // Iterate over the bounding box of the outer circle
@@ -268,4 +281,59 @@ void ST7735::draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width
             }
         }
     }
+}
+
+// Bresenham's Line Drawing Algorithm with Border Width
+void ST7735::draw_line(uint8_t s_x, uint8_t s_y, uint8_t e_x, uint8_t e_y, uint8_t border_width, uint16_t color)
+{
+    int dx = abs(e_x - s_x);
+    int dy = abs(e_y - s_y);
+    int sx = (s_x < e_x) ? 1 : -1;
+    int sy = (s_y < e_y) ? 1 : -1;
+    int err = dx - dy;
+
+    while (true)
+    {
+        // Draw the line with the specified border width by drawing multiple parallel lines
+        for (int w = -border_width / 2; w <= border_width / 2; ++w)
+        {
+            if (dx > dy)
+            {
+                draw_pixel(s_x, s_y + w, color); // Horizontal thickness
+            }
+            else
+            {
+                draw_pixel(s_x + w, s_y, color); // Vertical thickness
+            }
+        }
+
+        if (s_x == e_x && s_y == e_y)
+            break;
+
+        int e2 = 2 * err;
+        if (e2 > -dy)
+        {
+            err -= dy;
+            s_x += sx;
+        }
+        if (e2 < dx)
+        {
+            err += dx;
+            s_y += sy;
+        }
+    }
+}
+
+// Function to draw a line given the start position, length, and angle
+void ST7735::draw_line_with_angle(uint8_t s_x, uint8_t s_y, float length, float angle_deg, uint8_t border_width, uint16_t color)
+{
+    // Convert the angle from degrees to radians
+    float angle_rad = angle_deg * M_PI / 180.0f;
+
+    // Calculate the end position using trigonometry
+    uint8_t e_x = s_x + length * cos(angle_rad);
+    uint8_t e_y = s_y + length * sin(angle_rad);
+
+    // Use the draw_line function to actually draw the line
+    draw_line(s_x, s_y, e_x, e_y, border_width, color);
 }
