@@ -52,9 +52,9 @@
 
 // Color definitions (RGB565 format)
 #define ST7735_BLACK 0x0000
-#define ST7735_RED 0x07E0
-#define ST7735_GREEN 0x001F
-#define ST7735_BLUE 0xF800
+#define ST7735_RED 0xF800
+#define ST7735_GREEN 0x07E0
+#define ST7735_BLUE 0x001F
 #define ST7735_WHITE 0xFFFF
 
 const uint8_t font5x7[][5] = {

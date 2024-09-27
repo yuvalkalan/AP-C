@@ -82,11 +82,12 @@ void ST7735::draw_pixel(uint8_t x, uint8_t y, uint16_t color)
 {
     if (x >= ST7735_WIDTH || y >= ST7735_HEIGHT)
         return; // Bounds check
-    m_buffer[x + y * ST7735_WIDTH] = color;
+    m_buffer[x + y * ST7735_WIDTH] = (color >> 8) | (color << 8);
 }
 // Fill the entire screen with a color
 void ST7735::fill(uint16_t color)
 {
+    color = (color >> 8) | (color << 8);
     for (int x = 0; x < ST7735_WIDTH; x++)
     {
         for (int y = 0; y < ST7735_HEIGHT; y++)
