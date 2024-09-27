@@ -7,6 +7,7 @@
 #include "ST7735/ST7735.h"
 #include "Button/Button.h"
 #include "TimeMaster/TimeMaster.h"
+#include <chrono>
 // display pins -----------------------
 #define ST7735_PIN_CS 13   // Chip Select
 #define ST7735_PIN_DC 9    // Data/Command
@@ -88,11 +89,13 @@ void ap_mode(tm &current_time, Settings &settings, ST7735 &display)
     delete state;
 }
 
-std::string tmToString(const tm &timeinfo)
+std::string tm_to_string(const tm &timeinfo)
 {
     char buffer[80];
-    // Format the time as desired, e.g., "YYYY-MM-DD HH:MM:SS"
-    strftime(buffer, sizeof(buffer), "%d-%m-%Y\n%H:%M:%S", &timeinfo);
+    if (timeinfo.tm_year == 0 - 1900)
+        strftime(buffer, sizeof(buffer), "%d.%m\n%H:%M:%S", &timeinfo);
+    else
+        strftime(buffer, sizeof(buffer), "%d.%m.%Y\n%H:%M:%S", &timeinfo);
     return std::string(buffer);
 }
 
@@ -172,12 +175,34 @@ bool inline tm_is_bigger(const tm &time1, const tm &time2)
     return time1.tm_year > time2.tm_year;
 }
 
+bool confirm_settings_reset(ST7735 &display, Button &btn)
+{
+    bool confirmed = false;
+    bool finished = false;
+    std::string yes_msg = "yes";
+    std::string no_msg = "no";
+    while (!finished)
+    {
+        btn.update();
+        if (btn.hold_down())
+            finished = true;
+        if (btn.clicked())
+            confirmed = !confirmed;
+        display.fill(ST7735_BLACK);
+        display.draw_text(5, 5, "reset\nsettings?", ST7735_WHITE, 2);
+        display.draw_text(ST7735_WIDTH / 4 - 5 * 2 * yes_msg.length() / 2, ST7735_HEIGHT / 2, "yes", confirmed ? ST7735_RED : ST7735_WHITE, 2);
+        display.draw_text(ST7735_WIDTH / 4 * 3 - 5 * 2 * no_msg.length() / 2, ST7735_HEIGHT / 2, "no", confirmed ? ST7735_WHITE : ST7735_GREEN, 2);
+        display.update();
+    }
+    return confirmed;
+}
+
 int main()
 {
     int error = init_all();
     if (error)
         return error;
-    // sleep_ms(2000);
+    sleep_ms(1000);
     printf("start!\n");
 
     Settings settings;
@@ -190,19 +215,35 @@ int main()
         // printf("%s", html_content);
         tm current_time;
         ap_mode(current_time, settings, display);
-        // tm current_time = settings.get_current_time();
+        // tm b_time;
+        // b_time.tm_year = 2003 - 1900;
+        // b_time.tm_mon = 10 - 1;
+        // b_time.tm_mday = 25;
+        // b_time.tm_hour = 14;
+        // b_time.tm_min = 00;
+        // b_time.tm_sec = 00;
+        // settings.set_birthday_time(b_time);
+        // current_time = settings.get_current_time();
         setDS3231Time(&current_time);
     }
+
     copy_DS3231_time();
-    absolute_time_t boot_time = get_absolute_time();
+    // int current_sec = get_rtc_time().tm_sec;
+    // while (get_rtc_time().tm_sec == current_sec)
+    //     ;
+    // absolute_time_t boot_time = get_absolute_time();
+
     tm start_time = settings.get_start_time();
-    tm birthday_time = settings.get_start_time();
+    tm birthday_time = settings.get_birthday_time();
+    printf("settings are:\nstart time: %s\nbirthday time: %s\n", tm_to_string(start_time).c_str(), tm_to_string(birthday_time).c_str());
     tm display_time;
     uint8_t mode = MODE_CLOCK;
     uint8_t clock_cx = ST7735_WIDTH / 2, clock_radius = (ST7735_WIDTH > ST7735_HEIGHT ? ST7735_HEIGHT : ST7735_WIDTH) / 4, clock_cy = ST7735_HEIGHT - clock_radius - 10;
+    int frames = 0;
+    auto lastTime = std::chrono::high_resolution_clock::now();
+    display.fill(ST7735_BLACK);
     while (true)
     {
-        display.fill(ST7735_BLACK);
         btn.update();
 
         if (btn.clicked())
@@ -213,42 +254,59 @@ int main()
         }
         if (btn.hold_down())
         {
-            settings.reset();
+            if (confirm_settings_reset(display, btn))
+            {
+                settings.reset();
+            }
         }
         tm current_time = get_rtc_time();
 
         if (mode == MODE_CLOCK)
         {
             display_time = current_time;
-            display.draw_text(5, 5, ("Clock:\n\n" + tmToString(display_time)).c_str(), ST7735_WHITE, 2);
+            display.draw_text(5, 5, ("Clock:\n\n" + tm_to_string(display_time)).c_str(), ST7735_WHITE, 2);
         }
         else if (mode == MODE_COUNTER)
         {
             display_time = calculate_time_dif(start_time, current_time);
-            display.draw_text(5, 5, ("Start:\n\n" + tmToString(display_time)).c_str(), ST7735_WHITE, 2);
+            display.draw_text(5, 5, ("Start:\n\n" + tm_to_string(display_time)).c_str(), ST7735_WHITE, 2);
         }
         else if (mode == MODE_BIRTHDAY)
         {
             birthday_time.tm_year = current_time.tm_year;
             if (tm_is_bigger(current_time, birthday_time))
                 birthday_time.tm_year += 1;
+
             display_time = calculate_time_dif(current_time, birthday_time);
-            display.draw_text(5, 5, ("Birthday:\n\n" + tmToString(display_time)).c_str(), ST7735_WHITE, 2);
+            display.draw_text(5, 5, ("Birthday:\n\n" + tm_to_string(display_time)).c_str(), ST7735_WHITE, 2);
         }
         // sleep_ms(100);
-        int miliseconds = (to_ms_since_boot(get_absolute_time()) - to_ms_since_boot(boot_time)) % 1000;
+        uint32_t miliseconds = 0; //(to_ms_since_boot(get_absolute_time()) - to_ms_since_boot(boot_time)) % 1000;
         float total_secs = display_time.tm_sec + miliseconds / 1000.0f;
         float total_mins = display_time.tm_min + total_secs / 60;
         float total_hours = display_time.tm_hour + total_mins / 60;
         float sec_angle = total_secs * 360 / 60 + 270;
         float min_angle = total_mins * 360 / 60 + 270;
         float hour_angle = total_hours * 360 / 12 + 270;
-
         display.draw_circle(clock_cx, clock_cy, clock_radius, 2, ST7735_WHITE);
         display.draw_line_with_angle(clock_cx, clock_cy, clock_radius * 0.85f, sec_angle, 2, ST7735_WHITE);
         display.draw_line_with_angle(clock_cx, clock_cy, clock_radius * 0.70f, min_angle, 3, ST7735_RED);
         display.draw_line_with_angle(clock_cx, clock_cy, clock_radius * 0.50f, hour_angle, 4, ST7735_BLUE);
         display.update();
+        display.fill(ST7735_BLACK);
+
+        frames += 1;
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<float> deltaTime = currentTime - lastTime;
+        // Update FPS every second
+        if (deltaTime.count() >= 1.0f)
+        {
+            float fps = frames / deltaTime.count(); // Calculate FPS
+            frames = 0;                             // Reset frame count
+            lastTime = currentTime;                 // Reset time
+            // Output FPS
+            printf("fps: %f\n", fps);
+        }
     }
     return 0;
 }
