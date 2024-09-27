@@ -73,19 +73,8 @@ void ST7735::set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) con
 void ST7735::update()
 {
     // TODO: fix to be more efficient!
-    // should be like:
-    // set_addr_window(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
-    // write_data_buffer((uint8_t *)m_buffer, sizeof(m_buffer) * sizeof(m_buffer[0]));
-
-    for (int x = 0; x < ST7735_WIDTH; x++)
-    {
-        for (int y = 0; y < ST7735_HEIGHT; y++)
-        {
-            set_addr_window(x, y, x, y);
-            uint8_t color_data[] = {(uint8_t)(m_buffer[x][y] >> 8), (uint8_t)(m_buffer[x][y] & 0x00FF)}; // Split color into 2 bytes (RGB565)
-            write_data_buffer(color_data, sizeof(color_data));
-        }
-    }
+    set_addr_window(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
+    write_data_buffer((uint8_t *)m_buffer, ST7735_WIDTH * ST7735_HEIGHT * 2);
 }
 
 // Draw a pixel at (x, y) with a given color
@@ -93,7 +82,7 @@ void ST7735::draw_pixel(uint8_t x, uint8_t y, uint16_t color)
 {
     if (x >= ST7735_WIDTH || y >= ST7735_HEIGHT)
         return; // Bounds check
-    m_buffer[x][y] = color;
+    m_buffer[x + y * ST7735_WIDTH] = color;
 }
 // Fill the entire screen with a color
 void ST7735::fill(uint16_t color)
@@ -102,7 +91,7 @@ void ST7735::fill(uint16_t color)
     {
         for (int y = 0; y < ST7735_HEIGHT; y++)
         {
-            m_buffer[x][y] = ST7735_BLACK;
+            m_buffer[x + y * ST7735_WIDTH] = color;
         }
     }
 }
