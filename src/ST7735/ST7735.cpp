@@ -1,5 +1,13 @@
 #include "st7735.h"
 
+static bool inline is_inside_circle(int x, int y, int xc, int yc, int r)
+{
+    // Function to check if a point (x, y) lies inside a circle of radius r
+    int dx = x - xc;
+    int dy = y - yc;
+    return (dx * dx + dy * dy) < (r * r); // Check using distance squared
+}
+
 ST7735::ST7735(spi_inst_t *spi, uint baudrate, uint sck_pin, uint mosi_pin, uint cs_pin, uint dc_pin, uint rst_pin)
     : m_spi(spi),
       m_baudrate(baudrate),
@@ -24,34 +32,33 @@ ST7735::ST7735(spi_inst_t *spi, uint baudrate, uint sck_pin, uint mosi_pin, uint
     gpio_init(m_rst_pin);
     gpio_set_dir(m_rst_pin, GPIO_OUT);
 }
-
-// Low-level function to send commands
 void ST7735::write_command(uint8_t cmd) const
 {
+    // Low-level function to send commands
     gpio_put(m_dc_pin, 0); // DC low for command
     gpio_put(m_cs_pin, 0); // CS low
     spi_write_blocking(m_spi, &cmd, 1);
     gpio_put(m_cs_pin, 1); // CS high
 }
-// Low-level function to send data
 void ST7735::write_data(uint8_t data) const
 {
+    // Low-level function to send data
     gpio_put(m_dc_pin, 1); // DC high for data
     gpio_put(m_cs_pin, 0); // CS low
     spi_write_blocking(m_spi, &data, 1);
     gpio_put(m_cs_pin, 1); // CS high
 }
-// Write multiple data bytes (useful for bulk transfers like pixel data)
 void ST7735::write_data_buffer(const uint8_t *buffer, size_t size) const
 {
+    // Write multiple data bytes
     gpio_put(m_dc_pin, 1); // DC high for data
     gpio_put(m_cs_pin, 0); // CS low
     spi_write_blocking(m_spi, buffer, size);
     gpio_put(m_cs_pin, 1); // CS high
 }
-// Set the address window for pixel updates
 void ST7735::set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) const
 {
+    // Set the address window for pixel updates
     // Column address set
     write_command(ST7735_CMD_CASET);
     x0 += 2;
@@ -69,34 +76,24 @@ void ST7735::set_addr_window(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1) con
     // Write to RAM
     write_command(ST7735_CMD_RAMWR);
 }
-
 void ST7735::update()
 {
-    // TODO: fix to be more efficient!
     set_addr_window(0, 0, ST7735_WIDTH - 1, ST7735_HEIGHT - 1);
     write_data_buffer((uint8_t *)m_buffer, ST7735_WIDTH * ST7735_HEIGHT * 2);
 }
-
-// Draw a pixel at (x, y) with a given color
 void ST7735::draw_pixel(uint8_t x, uint8_t y, uint16_t color)
 {
+    // Draw a pixel at (x, y) with a given color
     if (x >= ST7735_WIDTH || y >= ST7735_HEIGHT)
         return; // Bounds check
     m_buffer[x + y * ST7735_WIDTH] = (color >> 8) | (color << 8);
 }
-// Fill the entire screen with a color
 void ST7735::fill(uint16_t color)
 {
+    // Fill the entire screen with a color
     color = (color >> 8) | (color << 8);
-    for (int x = 0; x < ST7735_WIDTH; x++)
-    {
-        for (int y = 0; y < ST7735_HEIGHT; y++)
-        {
-            m_buffer[x + y * ST7735_WIDTH] = color;
-        }
-    }
+    std::fill(m_buffer, m_buffer + ST7735_WIDTH * ST7735_HEIGHT, color);
 }
-
 void ST7735::reset()
 {
     // Reset the device
@@ -108,7 +105,6 @@ void ST7735::reset()
     gpio_put(m_rst_pin, 1);
     sleep_us(500);
 }
-
 void ST7735::init_red()
 {
     // Initialize a red tab version
@@ -202,7 +198,6 @@ void ST7735::init_red()
 
     gpio_put(m_cs_pin, 1);
 }
-
 void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale)
 {
     // draw char without backgound color
@@ -227,7 +222,6 @@ void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t sca
         }
     }
 }
-
 void ST7735::draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, uint8_t scale)
 {
     int counter = 0;
@@ -247,15 +241,6 @@ void ST7735::draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, u
         }
     }
 }
-
-// Function to check if a point (x, y) lies inside a circle of radius r
-static bool inline is_inside_circle(int x, int y, int xc, int yc, int r)
-{
-    int dx = x - xc;
-    int dy = y - yc;
-    return (dx * dx + dy * dy) < (r * r); // Check using distance squared
-}
-
 void ST7735::draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width, uint16_t color)
 {
     int outer_radius = r + border_width; // Radius of the outer circle
@@ -272,10 +257,9 @@ void ST7735::draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width
         }
     }
 }
-
-// Bresenham's Line Drawing Algorithm with Border Width
 void ST7735::draw_line(uint8_t s_x, uint8_t s_y, uint8_t e_x, uint8_t e_y, uint8_t border_width, uint16_t color)
 {
+    // Bresenham's Line Drawing Algorithm with Border Width
     int dx = abs(e_x - s_x);
     int dy = abs(e_y - s_y);
     int sx = (s_x < e_x) ? 1 : -1;
@@ -313,10 +297,9 @@ void ST7735::draw_line(uint8_t s_x, uint8_t s_y, uint8_t e_x, uint8_t e_y, uint8
         }
     }
 }
-
-// Function to draw a line given the start position, length, and angle
 void ST7735::draw_line_with_angle(uint8_t s_x, uint8_t s_y, float length, float angle_deg, uint8_t border_width, uint16_t color)
 {
+    // Function to draw a line given the start position, length, and angle
     // Convert the angle from degrees to radians
     float angle_rad = angle_deg * M_PI / 180.0f;
 

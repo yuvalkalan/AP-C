@@ -1,8 +1,10 @@
 #pragma once
 #include "pico/stdlib.h"
 #include <chrono>
+
 #define MAX_DOUBLE_CLICK_DELTA 0.5
 #define HOLD_DOWN_THRESHOLD 0.3
+
 class Button
 {
 private:
