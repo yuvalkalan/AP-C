@@ -87,6 +87,7 @@ void ap_mode(tm &current_time, Settings &settings, ST7735 &display)
     cyw43_arch_deinit();
     delete state;
 }
+
 std::string tmToString(const tm &timeinfo)
 {
     char buffer[80];
@@ -143,6 +144,7 @@ tm inline get_rtc_time()
     time.tm_sec = t.sec;
     return time;
 }
+
 bool inline tm_is_bigger(const tm &time1, const tm &time2)
 {
     if (time1.tm_year == time2.tm_year)
@@ -169,6 +171,7 @@ bool inline tm_is_bigger(const tm &time1, const tm &time2)
     }
     return time1.tm_year > time2.tm_year;
 }
+
 int main()
 {
     int error = init_all();
@@ -178,7 +181,6 @@ int main()
     printf("start!\n");
 
     Settings settings;
-
     ST7735 display(ST7735_SPI_PORT, ST7735_SPI_BAUDRATE, ST7735_PIN_SCK, ST7735_PIN_MOSI, ST7735_PIN_CS, ST7735_PIN_DC, ST7735_PIN_RST);
     Button btn(BUTTON_PIN);
     display.init_red();
@@ -238,9 +240,9 @@ int main()
         float total_secs = display_time.tm_sec + miliseconds / 1000.0f;
         float total_mins = display_time.tm_min + total_secs / 60;
         float total_hours = display_time.tm_hour + total_mins / 60;
-        float sec_angle = total_secs * 360 / 60 - 90;
-        float min_angle = total_mins * 360 / 60 - 90;
-        float hour_angle = total_hours * 360 / 12 - 90;
+        float sec_angle = total_secs * 360 / 60 + 270;
+        float min_angle = total_mins * 360 / 60 + 270;
+        float hour_angle = total_hours * 360 / 12 + 270;
 
         display.draw_circle(clock_cx, clock_cy, clock_radius, 2, ST7735_WHITE);
         display.draw_line_with_angle(clock_cx, clock_cy, clock_radius * 0.85f, sec_angle, 2, ST7735_WHITE);
