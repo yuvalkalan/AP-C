@@ -41,6 +41,7 @@ target_link_libraries(${PROJECT_NAME}
                         hardware_i2c                                # pico i2c interface
                         hardware_rtc                                # pico real time clock
                         hardware_spi                                # pico spi interface
+                        hardware_watchdog                           # pico watchdog
                         pico_cyw43_arch_lwip_threadsafe_background  # CYW43 Wi-Fi driver with lwIP
 )
 

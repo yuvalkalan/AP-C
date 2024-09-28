@@ -8,6 +8,7 @@
 #include "Button/Button.h"
 #include "TimeMaster/TimeMaster.h"
 #include <chrono>
+#include <hardware/watchdog.h>
 // display pins -----------------------
 #define ST7735_PIN_CS 13   // Chip Select
 #define ST7735_PIN_DC 9    // Data/Command
@@ -23,6 +24,50 @@
 #define MODE_COUNTER 1
 #define MODE_BIRTHDAY 2
 // ------------------------------------
+
+uint8_t center_x(const std::string &text, const uint8_t x_pos, const uint8_t scale)
+{
+    int current_length = 0;
+    int max_length = 0;
+    for (size_t i = 0; i < text.length(); i++)
+    {
+        if (text[i] == '\n')
+        {
+            max_length = current_length > max_length ? current_length : max_length;
+            current_length = 0;
+        }
+        else
+        {
+            current_length++;
+        }
+    }
+    max_length = current_length > max_length ? current_length : max_length;
+    return x_pos - (max_length * scale * (sizeof(font5x7[0]) + 1) - scale) / 2;
+}
+
+uint8_t center_y(const std::string &text, uint8_t y_pos, uint8_t scale)
+{
+    int num_of_lines = 1;
+    for (size_t i = 0; i < text.length(); i++)
+    {
+        if (text[i] == '\n')
+        {
+            num_of_lines++;
+        }
+    }
+    return y_pos - (num_of_lines * scale * 8 / 2);
+}
+
+void add_grid(ST7735 &display)
+{
+    for (size_t x = 4; x < ST7735_WIDTH; x += 8)
+    {
+        for (size_t y = 4; y < ST7735_HEIGHT; y += 8)
+        {
+            display.draw_pixel(x, y, ST7735_GREEN);
+        }
+    }
+}
 
 void ap_mode(tm &current_time, Settings &settings, ST7735 &display)
 {
@@ -65,6 +110,9 @@ void ap_mode(tm &current_time, Settings &settings, ST7735 &display)
     }
     display.fill(ST7735_BLACK);
     state->complete = false;
+    std::string display_title_msg("AP mode!");
+    std::string display_info_msg = std::string("Name:\n") + AP_WIFI_NAME + std::string("\n\nPassword:\n") + AP_WIFI_PASSWORD;
+    uint8_t scale = 2;
     while (!state->complete)
     {
         // check for disable wifi
@@ -76,7 +124,8 @@ void ap_mode(tm &current_time, Settings &settings, ST7735 &display)
             state->complete = true;
         }
         display.fill(ST7735_BLACK);
-        display.draw_text(0, 0, "ap mode!", ST7735_WHITE, 2);
+        display.draw_text(center_x(display_title_msg, ST7735_WIDTH / 2, scale), 8, display_title_msg.c_str(), ST7735_WHITE, scale);
+        display.draw_text(center_x(display_info_msg, ST7735_WIDTH / 2, scale), center_y(display_info_msg, ST7735_HEIGHT / 2, scale), display_info_msg.c_str(), ST7735_WHITE, scale);
         display.update();
         sleep_ms(1000);
     }
@@ -179,8 +228,10 @@ bool confirm_settings_reset(ST7735 &display, Button &btn)
 {
     bool confirmed = false;
     bool finished = false;
-    std::string yes_msg = "yes";
-    std::string no_msg = "no";
+    std::string reset_msg("reset\nsettings?");
+    std::string yes_msg("yes");
+    std::string no_msg("no");
+    uint8_t scale = 2;
     while (!finished)
     {
         btn.update();
@@ -189,12 +240,20 @@ bool confirm_settings_reset(ST7735 &display, Button &btn)
         if (btn.clicked())
             confirmed = !confirmed;
         display.fill(ST7735_BLACK);
-        display.draw_text(5, 5, "reset\nsettings?", ST7735_WHITE, 2);
-        display.draw_text(ST7735_WIDTH / 4 - 5 * 2 * yes_msg.length() / 2, ST7735_HEIGHT / 2, "yes", confirmed ? ST7735_RED : ST7735_WHITE, 2);
-        display.draw_text(ST7735_WIDTH / 4 * 3 - 5 * 2 * no_msg.length() / 2, ST7735_HEIGHT / 2, "no", confirmed ? ST7735_WHITE : ST7735_GREEN, 2);
+        display.draw_text(center_x(reset_msg, ST7735_WIDTH / 2, scale), 8, reset_msg.c_str(), ST7735_WHITE, 2);
+        display.draw_text(center_x(yes_msg, ST7735_WIDTH / 4, scale), center_y(yes_msg, ST7735_HEIGHT / 2, scale), yes_msg.c_str(), confirmed ? ST7735_RED : ST7735_WHITE, scale);    // 25% of width, centered
+        display.draw_text(center_x(no_msg, ST7735_WIDTH * 3 / 4, scale), center_y(no_msg, ST7735_HEIGHT / 2, scale), no_msg.c_str(), confirmed ? ST7735_WHITE : ST7735_GREEN, scale); // 75% of width, centered
         display.update();
     }
     return confirmed;
+}
+
+void software_reset()
+{
+    // reset the pico
+    watchdog_enable(1, 1);
+    while (1)
+        ;
 }
 
 int main()
@@ -215,15 +274,6 @@ int main()
         // printf("%s", html_content);
         tm current_time;
         ap_mode(current_time, settings, display);
-        // tm b_time;
-        // b_time.tm_year = 2003 - 1900;
-        // b_time.tm_mon = 10 - 1;
-        // b_time.tm_mday = 25;
-        // b_time.tm_hour = 14;
-        // b_time.tm_min = 00;
-        // b_time.tm_sec = 00;
-        // settings.set_birthday_time(b_time);
-        // current_time = settings.get_current_time();
         setDS3231Time(&current_time);
     }
 
@@ -241,9 +291,9 @@ int main()
     uint8_t clock_cx = ST7735_WIDTH / 2, clock_radius = (ST7735_WIDTH > ST7735_HEIGHT ? ST7735_HEIGHT : ST7735_WIDTH) / 4, clock_cy = ST7735_HEIGHT - clock_radius - 10;
     int frames = 0;
     auto lastTime = std::chrono::high_resolution_clock::now();
-    display.fill(ST7735_BLACK);
     while (true)
     {
+        display.fill(ST7735_BLACK);
         btn.update();
 
         if (btn.clicked())
@@ -257,6 +307,7 @@ int main()
             if (confirm_settings_reset(display, btn))
             {
                 settings.reset();
+                software_reset();
             }
         }
         tm current_time = get_rtc_time();
