@@ -2,6 +2,7 @@
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include <cmath>
+#include <string>
 // ST7735 command definitions
 #define ST7735_CMD_NOP 0x00
 #define ST7735_CMD_SWRESET 0x01
@@ -191,7 +192,7 @@ public:
     // void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint16_t bg, uint8_t scale);
     void draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t scale);
     // void draw_text(uint16_t x, uint16_t y, const char *text, uint16_t color, uint16_t bg, uint8_t scale);
-    void draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, uint8_t scale);
+    void draw_text(uint8_t x, uint8_t y, const std::string &text, uint16_t color, uint8_t scale);
     void draw_circle(uint8_t xc, uint8_t yc, uint8_t r, uint8_t border_width, uint16_t color);
     void draw_line(uint8_t s_x, uint8_t s_y, uint8_t e_x, uint8_t e_y, uint8_t border_width, uint16_t color);
     void draw_line_with_angle(uint8_t s_x, uint8_t s_y, float length, float angle_deg, uint8_t border_width, uint16_t color);

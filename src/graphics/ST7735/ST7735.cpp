@@ -222,21 +222,20 @@ void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t sca
         }
     }
 }
-void ST7735::draw_text(uint8_t x, uint8_t y, const char *text, uint16_t color, uint8_t scale)
+void ST7735::draw_text(uint8_t x, uint8_t y, const std::string &text, uint16_t color, uint8_t scale)
 {
     int counter = 0;
     uint8_t ori_x = x;
-    while (*text)
+    for (size_t i = 0; i < text.length(); i++)
     {
-        if (*text == '\n')
+        if (text[i] == '\n')
         {
             x = ori_x;
             y += 8 * scale;
-            text++;
         }
         else
         {
-            draw_char(x, y, *text++, color, scale);
+            draw_char(x, y, text[i], color, scale);
             x += 6 * scale; // Move x cursor, 5 pixels for the character + 1 pixel space
         }
     }

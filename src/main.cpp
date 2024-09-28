@@ -4,8 +4,8 @@
 #include "hardware/rtc.h"
 #include "pico/util/datetime.h"
 #include "hardware/spi.h"
-#include "ST7735/ST7735.h"
 #include "Button/Button.h"
+#include "graphics/graphics.h"
 #include "TimeMaster/TimeMaster.h"
 #include <chrono>
 #include <hardware/watchdog.h>
@@ -110,9 +110,13 @@ void ap_mode(tm &current_time, Settings &settings, ST7735 &display)
     }
     display.fill(ST7735_BLACK);
     state->complete = false;
-    std::string display_title_msg("AP mode!");
-    std::string display_info_msg = std::string("Name:\n") + AP_WIFI_NAME + std::string("\n\nPassword:\n") + AP_WIFI_PASSWORD;
-    uint8_t scale = 2;
+    GraphicsText display_title_msg(0, 8, "AP mode!", 2);
+    GraphicsText display_info_msg(0, 0,
+                                  std::string("Name:\n") + AP_WIFI_NAME + std::string("\n\nPassword:\n") + AP_WIFI_PASSWORD,
+                                  2);
+    display_title_msg.center_x(ST7735_WIDTH / 2);
+    display_info_msg.center_x(ST7735_WIDTH / 2);
+    display_info_msg.center_y(ST7735_HEIGHT / 2);
     while (!state->complete)
     {
         // check for disable wifi
@@ -124,8 +128,8 @@ void ap_mode(tm &current_time, Settings &settings, ST7735 &display)
             state->complete = true;
         }
         display.fill(ST7735_BLACK);
-        display.draw_text(center_x(display_title_msg, ST7735_WIDTH / 2, scale), 8, display_title_msg.c_str(), ST7735_WHITE, scale);
-        display.draw_text(center_x(display_info_msg, ST7735_WIDTH / 2, scale), center_y(display_info_msg, ST7735_HEIGHT / 2, scale), display_info_msg.c_str(), ST7735_WHITE, scale);
+        display_title_msg.draw(display, ST7735_WHITE);
+        display_info_msg.draw(display, ST7735_WHITE);
         display.update();
         sleep_ms(1000);
     }
@@ -228,10 +232,16 @@ bool confirm_settings_reset(ST7735 &display, Button &btn)
 {
     bool confirmed = false;
     bool finished = false;
-    std::string reset_msg("reset\nsettings?");
-    std::string yes_msg("yes");
-    std::string no_msg("no");
-    uint8_t scale = 2;
+    GraphicsText reset_msg(0, 8, "reset\nsettings?", 2);
+    reset_msg.center_x(ST7735_WIDTH / 2);
+
+    GraphicsText yes_msg(0, 0, "yes", 2);
+    yes_msg.center_x(ST7735_WIDTH / 4);
+    yes_msg.center_y(ST7735_HEIGHT / 2);
+
+    GraphicsText no_msg(0, 0, "no", 2);
+    no_msg.center_x(ST7735_WIDTH / 4 * 3);
+    no_msg.center_y(ST7735_HEIGHT / 2);
     while (!finished)
     {
         btn.update();
@@ -240,9 +250,9 @@ bool confirm_settings_reset(ST7735 &display, Button &btn)
         if (btn.clicked())
             confirmed = !confirmed;
         display.fill(ST7735_BLACK);
-        display.draw_text(center_x(reset_msg, ST7735_WIDTH / 2, scale), 8, reset_msg.c_str(), ST7735_WHITE, 2);
-        display.draw_text(center_x(yes_msg, ST7735_WIDTH / 4, scale), center_y(yes_msg, ST7735_HEIGHT / 2, scale), yes_msg.c_str(), confirmed ? ST7735_RED : ST7735_WHITE, scale);    // 25% of width, centered
-        display.draw_text(center_x(no_msg, ST7735_WIDTH * 3 / 4, scale), center_y(no_msg, ST7735_HEIGHT / 2, scale), no_msg.c_str(), confirmed ? ST7735_WHITE : ST7735_GREEN, scale); // 75% of width, centered
+        reset_msg.draw(display, ST7735_WHITE);
+        yes_msg.draw(display, confirmed ? ST7735_RED : ST7735_WHITE);
+        no_msg.draw(display, confirmed ? ST7735_WHITE : ST7735_GREEN);
         display.update();
     }
     return confirmed;
@@ -315,12 +325,12 @@ int main()
         if (mode == MODE_CLOCK)
         {
             display_time = current_time;
-            display.draw_text(5, 5, ("Clock:\n\n" + tm_to_string(display_time)).c_str(), ST7735_WHITE, 2);
+            display.draw_text(5, 5, ("Clock:\n\n" + tm_to_string(display_time)), ST7735_WHITE, 2);
         }
         else if (mode == MODE_COUNTER)
         {
             display_time = calculate_time_dif(start_time, current_time);
-            display.draw_text(5, 5, ("Start:\n\n" + tm_to_string(display_time)).c_str(), ST7735_WHITE, 2);
+            display.draw_text(5, 5, ("Start:\n\n" + tm_to_string(display_time)), ST7735_WHITE, 2);
         }
         else if (mode == MODE_BIRTHDAY)
         {
@@ -329,9 +339,8 @@ int main()
                 birthday_time.tm_year += 1;
 
             display_time = calculate_time_dif(current_time, birthday_time);
-            display.draw_text(5, 5, ("Birthday:\n\n" + tm_to_string(display_time)).c_str(), ST7735_WHITE, 2);
+            display.draw_text(5, 5, ("Birthday:\n\n" + tm_to_string(display_time)), ST7735_WHITE, 2);
         }
-        // sleep_ms(100);
         uint32_t miliseconds = 0; //(to_ms_since_boot(get_absolute_time()) - to_ms_since_boot(boot_time)) % 1000;
         float total_secs = display_time.tm_sec + miliseconds / 1000.0f;
         float total_mins = display_time.tm_min + total_secs / 60;

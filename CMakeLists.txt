@@ -25,7 +25,8 @@ add_executable(${PROJECT_NAME}
                 src/access_point/access_point.cpp
                 src/access_point/Settings/Settings.cpp
                 src/DS3231/DS3231.cpp
-                src/ST7735/ST7735.cpp
+                src/graphics/ST7735/ST7735.cpp
+                src/graphics/graphics.cpp
                 src/Button/Button.cpp
                 src/TimeMaster/TimeMaster.cpp
 )
