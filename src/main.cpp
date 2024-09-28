@@ -4,20 +4,22 @@
 #include "hardware/rtc.h"
 #include "pico/util/datetime.h"
 #include "hardware/spi.h"
-#include "Button/Button.h"
+#include "Rotary/Rotary.h"
 #include "graphics/graphics.h"
 #include "TimeMaster/TimeMaster.h"
 #include <chrono>
 #include <hardware/watchdog.h>
 // display pins -----------------------
-#define ST7735_PIN_CS 13   // Chip Select
 #define ST7735_PIN_DC 9    // Data/Command
 #define ST7735_PIN_RST 8   // Reset
 #define ST7735_PIN_SCK 10  // SPI Clock
 #define ST7735_PIN_MOSI 11 // SPI MOSI (Master Out Slave In)
+#define ST7735_PIN_CS 12   // Chip Select
 // ------------------------------------
 // button pin -------------------------
 #define BUTTON_PIN 16
+#define ROTARY_PIN_OUT_A 13
+#define ROTARY_PIN_OUT_B 7
 // ------------------------------------
 // display modes ----------------------
 #define MODE_CLOCK 0
@@ -228,7 +230,7 @@ bool inline tm_is_bigger(const tm &time1, const tm &time2)
     return time1.tm_year > time2.tm_year;
 }
 
-bool confirm_settings_reset(ST7735 &display, Button &btn)
+bool confirm_settings_reset(ST7735 &display, Rotary &rotary)
 {
     bool confirmed = false;
     bool finished = false;
@@ -244,10 +246,10 @@ bool confirm_settings_reset(ST7735 &display, Button &btn)
     no_msg.center_y(ST7735_HEIGHT / 2);
     while (!finished)
     {
-        btn.update();
-        if (btn.hold_down())
+        rotary.btn.update();
+        if (rotary.btn.hold_down())
             finished = true;
-        if (btn.clicked())
+        if (rotary.btn.clicked())
             confirmed = !confirmed;
         display.fill(ST7735_BLACK);
         reset_msg.draw(display, ST7735_WHITE);
@@ -276,7 +278,7 @@ int main()
 
     Settings settings;
     ST7735 display(ST7735_SPI_PORT, ST7735_SPI_BAUDRATE, ST7735_PIN_SCK, ST7735_PIN_MOSI, ST7735_PIN_CS, ST7735_PIN_DC, ST7735_PIN_RST);
-    Button btn(BUTTON_PIN);
+    Rotary rotary(ROTARY_PIN_OUT_A, ROTARY_PIN_OUT_B, BUTTON_PIN);
     display.init_red();
     display.fill(ST7735_BLACK);
     if (!settings.exist())
@@ -304,17 +306,16 @@ int main()
     while (true)
     {
         display.fill(ST7735_BLACK);
-        btn.update();
-
-        if (btn.clicked())
+        rotary.btn.update();
+        if (rotary.btn.clicked())
         {
             mode = (mode + 1) % 3;
             printf("new mode is %d\n", mode);
             display.fill(ST7735_BLACK);
         }
-        if (btn.hold_down())
+        if (rotary.btn.hold_down())
         {
-            if (confirm_settings_reset(display, btn))
+            if (confirm_settings_reset(display, rotary))
             {
                 settings.reset();
                 software_reset();
@@ -361,6 +362,9 @@ int main()
         // Update FPS every second
         if (deltaTime.count() >= 1.0f)
         {
+            int spins = rotary.get_spin();
+            if (spins)
+                printf("got %d spins!\n", spins);
             float fps = frames / deltaTime.count(); // Calculate FPS
             frames = 0;                             // Reset frame count
             lastTime = currentTime;                 // Reset time

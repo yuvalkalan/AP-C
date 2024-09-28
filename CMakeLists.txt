@@ -27,7 +27,8 @@ add_executable(${PROJECT_NAME}
                 src/DS3231/DS3231.cpp
                 src/graphics/ST7735/ST7735.cpp
                 src/graphics/graphics.cpp
-                src/Button/Button.cpp
+                src/Rotary/Rotary.cpp
+                src/Rotary/Button/Button.cpp
                 src/TimeMaster/TimeMaster.cpp
 )
 
