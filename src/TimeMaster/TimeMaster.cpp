@@ -84,6 +84,32 @@ bool Date::is_bigger(const Date &date2) const
     return false;
 }
 
+std::string Date::to_string() const
+{
+    std::ostringstream oss;
+    oss << std::setfill('0') << std::setw(2) << (m_day + 1) << "."
+        << std::setfill('0') << std::setw(2) << (m_month + 1) << "."
+        << m_year;
+    return oss.str();
+}
+
+void Date::set_day(int day)
+{
+    m_day = day;
+}
+void Date::set_month(int month)
+{
+    m_month = month;
+}
+void Date::set_year(int year)
+{
+    m_year = year;
+}
+int Date::month_days() const
+{
+    return MONTHS_LEN[m_month] + (m_month == 1 && is_leap() ? 1 : 0);
+}
+
 tm calculate_time_dif(const tm &datetime1, const tm &datetime2)
 {
     // should be datetime1 < datetime2

@@ -85,7 +85,10 @@ void ST7735::draw_pixel(uint8_t x, uint8_t y, uint16_t color)
 {
     // Draw a pixel at (x, y) with a given color
     if (x >= ST7735_WIDTH || y >= ST7735_HEIGHT)
+    {
+        printf("invalid pixel pos! (%d, %d)\n", x, y);
         return; // Bounds check
+    }
     m_buffer[x + y * ST7735_WIDTH] = (color >> 8) | (color << 8);
 }
 void ST7735::fill(uint16_t color)
@@ -211,13 +214,10 @@ void ST7735::draw_char(uint8_t x, uint8_t y, char c, uint16_t color, uint8_t sca
         uint8_t line = bitmap[i];
         for (int j = 0; j < 7; j++) // 7 rows per column
         {
-            for (uint8_t sx = 0; sx < scale; sx++) // Draw scaled pixel
-            {
-                for (uint8_t sy = 0; sy < scale; sy++)
-                {
-                    draw_pixel(x + (i * scale) + sx, y + (j * scale) + sy, line & 0x1 ? color : ST7735_BLACK);
-                }
-            }
+            if (line & 0x1)
+                for (uint8_t sx = 0; sx < scale; sx++) // Draw scaled pixel
+                    for (uint8_t sy = 0; sy < scale; sy++)
+                        draw_pixel(x + (i * scale) + sx, y + (j * scale) + sy, color);
             line >>= 1; // Shift the line to get the next bit
         }
     }

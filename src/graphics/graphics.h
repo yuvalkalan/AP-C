@@ -4,6 +4,22 @@
 #include "pico/stdlib.h"
 #include "ST7735/ST7735.h"
 
+class GraphicsColor
+{
+private:
+    uint16_t m_color;
+
+public:
+    GraphicsColor(uint16_t color);
+    uint8_t get_red() const;
+    uint8_t get_green() const;
+    uint8_t get_blue() const;
+    uint16_t fade(GraphicsColor &other, float precent) const;
+    operator uint16_t() const;
+    static uint16_t makeColor(uint8_t r, uint8_t g, uint8_t b);
+    // static GraphicsColor rgb24to16(uint32_t rgb24);
+};
+
 class GraphicsRect
 {
 private:
@@ -13,12 +29,12 @@ public:
     GraphicsRect(int x, int y, int width, int height);
     virtual ~GraphicsRect();
     // getters:
-    int top();
-    int bottom();
-    int left();
-    int right();
-    int center_x();
-    int center_y();
+    int top() const;
+    int bottom() const;
+    int left() const;
+    int right() const;
+    int center_x() const;
+    int center_y() const;
     // setters:
     void top(int value);
     void bottom(int value);
@@ -40,4 +56,5 @@ public:
     GraphicsText(int x, int y, std::string string, uint8_t scale);
     ~GraphicsText() override;
     void draw(ST7735 &display, uint16_t color) override;
+    GraphicsRect get_rect() const;
 };

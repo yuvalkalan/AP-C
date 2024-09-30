@@ -30,6 +30,7 @@ add_executable(${PROJECT_NAME}
                 src/Rotary/Rotary.cpp
                 src/Rotary/Button/Button.cpp
                 src/TimeMaster/TimeMaster.cpp
+                src/settings_config/settings_config.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

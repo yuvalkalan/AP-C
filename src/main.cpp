@@ -1,12 +1,12 @@
 #include "pico/stdlib.h"
 #include "access_point/access_point.h"
 #include "DS3231/DS3231.h"
-#include "hardware/rtc.h"
 #include "pico/util/datetime.h"
 #include "hardware/spi.h"
 #include "Rotary/Rotary.h"
 #include "graphics/graphics.h"
 #include "TimeMaster/TimeMaster.h"
+#include "settings_config/settings_config.h"
 #include <chrono>
 #include <hardware/watchdog.h>
 // display pins -----------------------
@@ -28,47 +28,6 @@
 #define MODE_BIRTHDAY 2
 #define MUN_OF_MODES 3
 // ------------------------------------
-
-typedef bool (*config_func)(ST7735 &display, Rotary &rotary, Settings &settings);
-typedef struct
-{
-    int id; // TODO: remove if unnecessary
-    GraphicsText msg;
-    config_func func;
-} ConfigHeader;
-
-uint8_t center_x(const std::string &text, const uint8_t x_pos, const uint8_t scale)
-{
-    int current_length = 0;
-    int max_length = 0;
-    for (size_t i = 0; i < text.length(); i++)
-    {
-        if (text[i] == '\n')
-        {
-            max_length = current_length > max_length ? current_length : max_length;
-            current_length = 0;
-        }
-        else
-        {
-            current_length++;
-        }
-    }
-    max_length = current_length > max_length ? current_length : max_length;
-    return x_pos - (max_length * scale * (sizeof(font5x7[0]) + 1) - scale) / 2;
-}
-
-uint8_t center_y(const std::string &text, uint8_t y_pos, uint8_t scale)
-{
-    int num_of_lines = 1;
-    for (size_t i = 0; i < text.length(); i++)
-    {
-        if (text[i] == '\n')
-        {
-            num_of_lines++;
-        }
-    }
-    return y_pos - (num_of_lines * scale * 8 / 2);
-}
 
 void add_grid(ST7735 &display)
 {
@@ -181,38 +140,6 @@ static int init_all()
     return 0;
 }
 
-void copy_DS3231_time()
-{
-    tm current_time;
-    readDS3231Time(&current_time);
-
-    datetime_t t = {
-        .year = int16_t(current_time.tm_year + 1900),
-        .month = int8_t(current_time.tm_mon + 1),
-        .day = int8_t(current_time.tm_mday),
-        .dotw = int8_t(current_time.tm_wday), // irrelevant, calculate automatically
-        .hour = int8_t(current_time.tm_hour),
-        .min = int8_t(current_time.tm_min),
-        .sec = int8_t(current_time.tm_sec)};
-    rtc_set_datetime(&t);
-    sleep_ms(10); // wait some time for rtc to reset
-}
-
-tm inline get_rtc_time()
-{
-    datetime_t t;
-    rtc_get_datetime(&t);
-    tm time;
-    time.tm_year = t.year - 1900;
-    time.tm_mon = t.month - 1;
-    time.tm_mday = t.day;
-    time.tm_wday = t.dotw;
-    time.tm_hour = t.hour;
-    time.tm_min = t.min;
-    time.tm_sec = t.sec;
-    return time;
-}
-
 bool inline tm_is_bigger(const tm &time1, const tm &time2)
 {
     if (time1.tm_year == time2.tm_year)
@@ -246,134 +173,6 @@ void software_reset()
     watchdog_enable(1, 1);
     while (1)
         ;
-}
-
-bool confirm_settings_reset(ST7735 &display, Rotary &rotary)
-{
-    bool confirmed = false;
-    bool finished = false;
-    GraphicsText reset_msg(0, 8, "reset\nsettings?", 2);
-    reset_msg.center_x(ST7735_WIDTH / 2);
-
-    GraphicsText yes_msg(0, 0, "yes", 2);
-    yes_msg.center_x(ST7735_WIDTH / 4);
-    yes_msg.center_y(ST7735_HEIGHT / 2);
-
-    GraphicsText no_msg(0, 0, "no", 2);
-    no_msg.center_x(ST7735_WIDTH / 4 * 3);
-    no_msg.center_y(ST7735_HEIGHT / 2);
-    while (!finished)
-    {
-        rotary.btn.update();
-        int spins = rotary.get_spin();
-        if (spins % 2 != 0)
-            confirmed = !confirmed;
-        if (rotary.btn.hold_down())
-            finished = true;
-        display.fill(ST7735_BLACK);
-        reset_msg.draw(display, ST7735_WHITE);
-        yes_msg.draw(display, confirmed ? ST7735_RED : ST7735_WHITE);
-        no_msg.draw(display, confirmed ? ST7735_WHITE : ST7735_GREEN);
-        display.update();
-    }
-    return confirmed;
-}
-
-bool settings_config_exit(ST7735 &display, Rotary &rotary, Settings &settings)
-{
-    return true;
-}
-
-bool settings_config_date(ST7735 &display, Rotary &rotary, Settings &settings)
-{
-    return false;
-}
-bool settings_config_time(ST7735 &display, Rotary &rotary, Settings &settings)
-{
-    return false;
-}
-bool settings_config_datetime(ST7735 &display, Rotary &rotary, Settings &settings)
-{
-    int length = 0;
-    ConfigHeader msgs[] = {
-        {length++, GraphicsText(0, 0, "Date", 2), settings_config_date},
-        {length++, GraphicsText(0, 0, "Time", 2), settings_config_time},
-        {length++, GraphicsText(0, 0, "Exit", 2), settings_config_exit},
-    };
-    for (size_t i = 0; i < length; i++) // TODO: create function for this
-    {
-        msgs[i].msg.center_x(ST7735_WIDTH / 2);
-        msgs[i].msg.center_y(ST7735_HEIGHT / (length + 1) * (i + 1));
-    }
-    int current_select = 0;
-    bool exit = false;
-    while (!exit)
-    {
-        // input
-        rotary.btn.update();
-        int spins = rotary.get_spin();
-        if (spins)
-            current_select = ((current_select + spins) % length + length) % length;
-        if (rotary.btn.clicked())
-            exit = msgs[current_select].func(display, rotary, settings); // apply function
-        // display
-        for (size_t i = 0; i < length; i++)
-        {
-            msgs[i].msg.draw(display, i == current_select ? ST7735_GREEN : ST7735_WHITE);
-        }
-        display.update();
-        display.fill(ST7735_BLACK);
-    }
-    return false;
-} // TODO
-bool settings_config_clocks(ST7735 &display, Rotary &rotary, Settings &settings)
-{
-    return false;
-} // TODO
-bool settings_config_reset(ST7735 &display, Rotary &rotary, Settings &settings)
-{
-    if (confirm_settings_reset(display, rotary))
-    {
-        settings.reset();
-        software_reset();
-    }
-    return false;
-}
-
-void settings_config_main(ST7735 &display, Rotary &rotary, Settings &settings)
-{
-    int length = 0;
-    ConfigHeader msgs[] = {
-        {length++, GraphicsText(0, 0, "Date/Time", 2), settings_config_datetime},
-        {length++, GraphicsText(0, 0, "Clocks", 2), settings_config_clocks},
-        {length++, GraphicsText(0, 0, "Reset", 2), settings_config_reset},
-        {length++, GraphicsText(0, 0, "Exit", 2), settings_config_exit},
-    };
-
-    for (size_t i = 0; i < length; i++)
-    {
-        msgs[i].msg.center_x(ST7735_WIDTH / 2);
-        msgs[i].msg.center_y(ST7735_HEIGHT / (length + 1) * (i + 1));
-    }
-    int current_select = 0;
-    bool exit = false;
-    while (!exit)
-    {
-        // input
-        rotary.btn.update();
-        int spins = rotary.get_spin();
-        if (spins)
-            current_select = ((current_select + spins) % length + length) % length;
-        if (rotary.btn.clicked())
-            exit = msgs[current_select].func(display, rotary, settings); // apply function
-        // display
-        for (size_t i = 0; i < length; i++)
-        {
-            msgs[i].msg.draw(display, i == current_select ? ST7735_GREEN : ST7735_WHITE);
-        }
-        display.update();
-        display.fill(ST7735_BLACK);
-    }
 }
 
 int main()
@@ -417,7 +216,7 @@ int main()
         int spins = rotary.get_spin();
         if (spins)
         {
-            mode = ((mode + spins) % MUN_OF_MODES + MUN_OF_MODES) % MUN_OF_MODES;
+            mode = ROUND_MOD(mode, spins, MUN_OF_MODES);
         }
         if (rotary.btn.clicked())
         {

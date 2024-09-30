@@ -1,6 +1,7 @@
 #pragma once
 #include <ctime>
-
+#include <sstream>
+#include <iomanip>
 const int MONTHS_LEN[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 class Date
@@ -21,6 +22,11 @@ public:
     bool is_equal(const Date &date2) const;
     int month_delta() const;
     bool is_bigger(const Date &date2) const;
+    std::string to_string() const;
+    void set_day(int day);
+    void set_month(int month);
+    void set_year(int year);
+    int month_days() const;
 };
 
 tm calculate_time_dif(const tm &datetime1, const tm &datetime2);

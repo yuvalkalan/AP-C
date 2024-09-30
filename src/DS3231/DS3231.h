@@ -1,10 +1,10 @@
+#pragma once
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include <string>
 #include <time.h>
-// #include "pico/util/datetime.h"
 
 // DS3231 I2C settings
 #define I2C_PORT i2c1
