@@ -8,19 +8,6 @@ typedef struct
     config_func func;
 } ConfigHeader;
 
-#include <iomanip>
-#include <sstream>
-#include <string>
-
-static std::string format_time(int hour, int minute, int seconds)
-{
-    std::ostringstream oss;
-    oss << std::setw(2) << std::setfill('0') << hour << ":"
-        << std::setw(2) << std::setfill('0') << minute << ":"
-        << std::setw(2) << std::setfill('0') << seconds;
-    return oss.str();
-}
-
 static bool confirm_settings_reset(ST7735 &display, Rotary &rotary)
 {
     bool confirmed = false;
@@ -226,7 +213,7 @@ static bool settings_config_time(ST7735 &display, Rotary &rotary, Settings &sett
     tm start_rtc_time = get_rtc_time();
     Time time(start_rtc_time.tm_hour, start_rtc_time.tm_min, start_rtc_time.tm_sec);
     auto start_chrono_clock = std::chrono::steady_clock::now();
-    std::string time_string = format_time(start_rtc_time.tm_hour, start_rtc_time.tm_min, start_rtc_time.tm_sec);
+    std::string time_string = time.to_string();
     // get size and position of date string
     GraphicsRect box = GraphicsText(0, 0, time_string, 2).get_rect();
     box.center_x(ST7735_WIDTH / 2);
@@ -285,7 +272,7 @@ static bool settings_config_time(ST7735 &display, Rotary &rotary, Settings &sett
             printf("time is %d, %d, %d\n", time.get_hour(), time.get_min(), time.get_sec());
             start_chrono_clock = current_time;
         }
-        time_string = format_time(time.get_hour(), time.get_min(), time.get_sec());
+        time_string = time.to_string();
         hour_substring = GraphicsText(box.left(), box.top(), time_string.substr(0, 2), 2);                           // hh
         min_substring = GraphicsText(dot1_substring.right() + 2, dot1_substring.top(), time_string.substr(3, 2), 2); // mm
         sec_substring = GraphicsText(dot2_substring.right() + 2, dot2_substring.top(), time_string.substr(6, 2), 2); // ss

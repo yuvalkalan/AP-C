@@ -139,6 +139,14 @@ int Time::get_sec() const
 {
     return m_sec;
 }
+std::string Time::to_string() const
+{
+    std::ostringstream oss;
+    oss << std::setw(2) << std::setfill('0') << m_hour << ":"
+        << std::setw(2) << std::setfill('0') << m_min << ":"
+        << std::setw(2) << std::setfill('0') << m_sec;
+    return oss.str();
+}
 void Time::set_hour(int value)
 {
     m_hour = value;

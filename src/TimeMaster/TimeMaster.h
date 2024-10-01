@@ -40,6 +40,7 @@ public:
     int get_hour() const;
     int get_min() const;
     int get_sec() const;
+    std::string to_string() const;
     void set_hour(int value);
     void set_min(int value);
     void set_sec(int value);
