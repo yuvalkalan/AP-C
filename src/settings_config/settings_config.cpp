@@ -8,6 +8,19 @@ typedef struct
     config_func func;
 } ConfigHeader;
 
+#include <iomanip>
+#include <sstream>
+#include <string>
+
+static std::string format_time(int hour, int minute, int seconds)
+{
+    std::ostringstream oss;
+    oss << std::setw(2) << std::setfill('0') << hour << ":"
+        << std::setw(2) << std::setfill('0') << minute << ":"
+        << std::setw(2) << std::setfill('0') << seconds;
+    return oss.str();
+}
+
 static bool confirm_settings_reset(ST7735 &display, Rotary &rotary)
 {
     bool confirmed = false;
@@ -210,6 +223,90 @@ static bool settings_config_date(ST7735 &display, Rotary &rotary, Settings &sett
 }
 static bool settings_config_time(ST7735 &display, Rotary &rotary, Settings &settings)
 {
+    tm start_rtc_time = get_rtc_time();
+    Time time(start_rtc_time.tm_hour, start_rtc_time.tm_min, start_rtc_time.tm_sec);
+    auto start_chrono_clock = std::chrono::steady_clock::now();
+    std::string time_string = format_time(start_rtc_time.tm_hour, start_rtc_time.tm_min, start_rtc_time.tm_sec);
+    // get size and position of date string
+    GraphicsRect box = GraphicsText(0, 0, time_string, 2).get_rect();
+    box.center_x(ST7735_WIDTH / 2);
+    box.center_y(ST7735_HEIGHT / 2);
+    // create visual data
+    GraphicsText hour_substring(box.left(), box.top(), time_string.substr(0, 2), 2);                           // hh
+    GraphicsText dot1_substring(hour_substring.right() + 2, hour_substring.top(), ":", 2);                     //:
+    GraphicsText min_substring(dot1_substring.right() + 2, dot1_substring.top(), time_string.substr(3, 2), 2); // mm
+    GraphicsText dot2_substring(min_substring.right() + 2, min_substring.top(), ":", 2);                       //:
+    GraphicsText sec_substring(dot2_substring.right() + 2, dot2_substring.top(), time_string.substr(6, 2), 2); // ss
+
+    int current_select = SETTINGS_CONFIG_HOURS;
+    const int time_length = 3; // hours, minutes and seconds
+    auto last_time = std::chrono::steady_clock::now();
+    bool toggle_current = true;
+    int exit_status = SETTINGS_CONFIG_SAVE_CANCEL;
+    while (!exit_status)
+    {
+        // input
+        rotary.btn.update();
+        int spins = rotary.get_spin();
+        if (spins)
+        {
+            if (current_select == SETTINGS_CONFIG_HOURS)
+            {
+                time.set_hour(ROUND_MOD(time.get_hour(), spins, 24)); // 0 - 23
+            }
+            else if (current_select == SETTINGS_CONFIG_MINUTES)
+            {
+                time.set_min(ROUND_MOD(time.get_min(), spins, 60)); // 0 - 59
+            }
+            else if (current_select == SETTINGS_CONFIG_SECONDS)
+            {
+                time.set_sec(ROUND_MOD(time.get_sec(), spins, 60)); // 0 - 59
+            }
+        }
+        if (rotary.btn.clicked())
+        {
+            current_select = ROUND_MOD(current_select, 1, time_length);
+            last_time = std::chrono::steady_clock::now();
+        }
+        if (rotary.btn.hold_down())
+            exit_status = confirm_save_changes(display, rotary, settings);
+        auto current_time = std::chrono::steady_clock::now();
+        std::chrono::duration<double> delta_time = current_time - last_time;
+        if (delta_time.count() >= 0.5)
+        {
+            toggle_current = !toggle_current;
+            last_time = current_time; // Reset the last print time
+        }
+        delta_time = current_time - start_chrono_clock;
+        if (delta_time.count() >= 1)
+        {
+            time += 1;
+            printf("here! ");
+            printf("time is %d, %d, %d\n", time.get_hour(), time.get_min(), time.get_sec());
+            start_chrono_clock = current_time;
+        }
+        time_string = format_time(time.get_hour(), time.get_min(), time.get_sec());
+        hour_substring = GraphicsText(box.left(), box.top(), time_string.substr(0, 2), 2);                           // hh
+        min_substring = GraphicsText(dot1_substring.right() + 2, dot1_substring.top(), time_string.substr(3, 2), 2); // mm
+        sec_substring = GraphicsText(dot2_substring.right() + 2, dot2_substring.top(), time_string.substr(6, 2), 2); // ss
+
+        hour_substring.draw(display, current_select == SETTINGS_CONFIG_DAYS && !toggle_current ? ST7735_BLACK : ST7735_WHITE);
+        dot1_substring.draw(display, ST7735_WHITE);
+        min_substring.draw(display, current_select == SETTINGS_CONFIG_MONTHS && !toggle_current ? ST7735_BLACK : ST7735_WHITE);
+        dot2_substring.draw(display, ST7735_WHITE);
+        sec_substring.draw(display, current_select == SETTINGS_CONFIG_YEARS && !toggle_current ? ST7735_BLACK : ST7735_WHITE);
+        display.update();
+        display.fill(ST7735_BLACK);
+    }
+    if (exit_status == SETTINGS_CONFIG_SAVE_TRUE)
+    {
+        tm time_rtc = get_rtc_time();
+        time_rtc.tm_hour = time.get_hour();
+        time_rtc.tm_min = time.get_min();
+        time_rtc.tm_sec = time.get_sec();
+        setDS3231Time(&time_rtc);
+        copy_DS3231_time();
+    }
     return false;
 }
 static bool settings_config_datetime(ST7735 &display, Rotary &rotary, Settings &settings)
@@ -250,7 +347,6 @@ void settings_config_main(ST7735 &display, Rotary &rotary, Settings &settings)
         {length++, GraphicsText(0, 0, "Reset", 2), settings_config_reset},
         {length++, GraphicsText(0, 0, "Exit", 2), settings_config_exit},
     };
-    settings_config_datetime(display, rotary, settings);
     for (size_t i = 0; i < length; i++)
     {
         msgs[i].msg.center_x(ST7735_WIDTH / 2);

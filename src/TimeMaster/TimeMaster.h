@@ -29,4 +29,20 @@ public:
     int month_days() const;
 };
 
+class Time
+{
+private:
+    int m_hour, m_min, m_sec;
+
+public:
+    Time(int hour, int min, int sec);
+    Time &operator+=(int sec);
+    int get_hour() const;
+    int get_min() const;
+    int get_sec() const;
+    void set_hour(int value);
+    void set_min(int value);
+    void set_sec(int value);
+};
+
 tm calculate_time_dif(const tm &datetime1, const tm &datetime2);

@@ -83,7 +83,6 @@ bool Date::is_bigger(const Date &date2) const
     }
     return false;
 }
-
 std::string Date::to_string() const
 {
     std::ostringstream oss;
@@ -92,7 +91,6 @@ std::string Date::to_string() const
         << m_year;
     return oss.str();
 }
-
 void Date::set_day(int day)
 {
     m_day = day;
@@ -108,6 +106,50 @@ void Date::set_year(int year)
 int Date::month_days() const
 {
     return MONTHS_LEN[m_month] + (m_month == 1 && is_leap() ? 1 : 0);
+}
+
+Time::Time(int hour, int min, int sec) : m_hour(hour), m_min(min), m_sec(sec) {}
+Time &Time::operator+=(int sec)
+{
+    m_sec += sec;
+    while (m_sec >= 60)
+    {
+        m_sec -= 60;
+
+        m_min += 1;
+    }
+    while (m_min >= 60)
+    {
+        m_min -= 60;
+        m_hour += 1;
+    }
+    while (m_hour >= 24)
+        m_hour -= 24;
+    return *this;
+}
+int Time::get_hour() const
+{
+    return m_hour;
+}
+int Time::get_min() const
+{
+    return m_min;
+}
+int Time::get_sec() const
+{
+    return m_sec;
+}
+void Time::set_hour(int value)
+{
+    m_hour = value;
+}
+void Time::set_min(int value)
+{
+    m_min = value;
+}
+void Time::set_sec(int value)
+{
+    m_sec = value;
 }
 
 tm calculate_time_dif(const tm &datetime1, const tm &datetime2)

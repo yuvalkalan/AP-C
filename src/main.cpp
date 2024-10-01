@@ -1,11 +1,4 @@
-#include "pico/stdlib.h"
 #include "access_point/access_point.h"
-#include "DS3231/DS3231.h"
-#include "pico/util/datetime.h"
-#include "hardware/spi.h"
-#include "Rotary/Rotary.h"
-#include "graphics/graphics.h"
-#include "TimeMaster/TimeMaster.h"
 #include "settings_config/settings_config.h"
 #include <chrono>
 #include <hardware/watchdog.h>
