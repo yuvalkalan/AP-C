@@ -1,11 +1,12 @@
 #pragma once
 #include "hardware/rtc.h"
+#include <hardware/watchdog.h>
+#include <chrono>
 #include "../graphics/graphics.h"
 #include "../Rotary/Rotary.h"
 #include "../access_point/Settings/Settings.h"
 #include "../TimeMaster/TimeMaster.h"
 #include "../DS3231/DS3231.h"
-#include <chrono>
 
 #define SETTINGS_CONFIG_SELECTED_COLOR 0x1082
 #define ROUND_MOD(x, y, max) ((((x) + (y)) % (max) + (max)) % (max))

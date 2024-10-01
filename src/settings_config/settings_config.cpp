@@ -8,6 +8,13 @@ typedef struct
     config_func func;
 } ConfigHeader;
 
+void software_reset()
+{
+    // reset the pico
+    watchdog_enable(1, 1);
+    while (1)
+        ;
+}
 static bool confirm_settings_reset(ST7735 &display, Rotary &rotary)
 {
     bool confirmed = false;

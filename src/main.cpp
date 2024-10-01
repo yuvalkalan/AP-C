@@ -1,7 +1,5 @@
 #include "access_point/access_point.h"
 #include "settings_config/settings_config.h"
-#include <chrono>
-#include <hardware/watchdog.h>
 // display pins -----------------------
 #define ST7735_PIN_DC 9    // Data/Command
 #define ST7735_PIN_RST 8   // Reset
@@ -158,14 +156,6 @@ bool inline tm_is_bigger(const tm &time1, const tm &time2)
         return time1.tm_mon > time2.tm_mon;
     }
     return time1.tm_year > time2.tm_year;
-}
-
-void software_reset()
-{
-    // reset the pico
-    watchdog_enable(1, 1);
-    while (1)
-        ;
 }
 
 int main()
